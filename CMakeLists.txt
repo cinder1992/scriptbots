@@ -34,7 +34,7 @@ set( SB_SRCS
 add_executable(scriptbots  ${SB_SRCS})
 
 if (WIN32 AND NOT GLUT_FOUND)
-    target_link_libraries(scriptbots ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${GLUT32_LIBRARY})
+    target_link_libraries(scriptbots ${OPENGL32_LIBRARIES} ${GLUT_LIBRARY} ${GLUT32_LIBRARY})
 else()
-    target_link_libraries(scriptbots ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
+    target_link_libraries(scriptbots ${OPENGL32_LIBRARIES} ${GLUT_LIBRARY})
 endif()

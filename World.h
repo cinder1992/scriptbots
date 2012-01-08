@@ -43,6 +43,8 @@ public:
     std::vector<int> numCarnivore;
     std::vector<int> numHerbivore; 
     int ptr;
+
+	int deleting;
     
 private:
     void setInputs();

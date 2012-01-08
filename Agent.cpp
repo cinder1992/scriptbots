@@ -36,7 +36,8 @@ Agent::Agent()
     temperature_preference=randf(0,1);
     hybrid= false;
     herbivore= randf(0,1);
-    repcounter= herbivore*randf(conf::REPRATEH-0.1,conf::REPRATEH+0.1) + (1-herbivore)*randf(conf::REPRATEC-0.1,conf::REPRATEC+0.1);
+	reprate= randf(conf::MINREPRATE,30); //(GPA) 30 is the slowest spawnable rep rate, MINREPRATE is fastest
+    repcounter= reprate;
 
     id=0;
     
@@ -99,7 +100,9 @@ Agent Agent::reproduce(float MR, float MR2)
     if (a2.pos.y>=conf::HEIGHT) a2.pos.y= a2.pos.y-conf::HEIGHT;
 
     a2.gencount= this->gencount+1;
-    a2.repcounter= a2.herbivore*randf(conf::REPRATEH-0.1,conf::REPRATEH+0.1) + (1-a2.herbivore)*randf(conf::REPRATEC-0.1,conf::REPRATEC+0.1);
+	a2.reprate= randn(this->reprate, MR2*2);
+	if (a2.reprate<conf::MINREPRATE) a2.reprate= conf::MINREPRATE;
+    a2.repcounter= a2.reprate;
 
     //noisy attribute passing
     a2.MUTRATE1= this->MUTRATE1;
@@ -109,9 +112,9 @@ Agent Agent::reproduce(float MR, float MR2)
     if (this->MUTRATE1<0.001) this->MUTRATE1= 0.001;
     if (this->MUTRATE2<0.02) this->MUTRATE2= 0.02;
     a2.herbivore= cap(randn(this->herbivore, 0.03));
-    if (randf(0,1)<MR*5) a2.clockf1= randn(a2.clockf1, MR2);
+    if (randf(0,1)<MR*5) a2.clockf1= randn(this->clockf1, MR2);
     if (a2.clockf1<2) a2.clockf1= 2;
-    if (randf(0,1)<MR*5) a2.clockf2= randn(a2.clockf2, MR2);
+    if (randf(0,1)<MR*5) a2.clockf2= randn(this->clockf2, MR2);
     if (a2.clockf2<2) a2.clockf2= 2;
     
     a2.smellmod = this->smellmod;
@@ -155,6 +158,7 @@ Agent Agent::crossover(const Agent& other)
     anew.hybrid=true; //set this non-default flag
     anew.gencount= this->gencount;
     if (other.gencount<anew.gencount) anew.gencount= other.gencount;
+	anew.reprate= randf(0,1)<0.5 ? this->reprate : other.reprate;
 
     //agent heredity attributes
     anew.clockf1= randf(0,1)<0.5 ? this->clockf1 : other.clockf1;

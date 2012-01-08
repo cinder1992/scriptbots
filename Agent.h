@@ -45,6 +45,7 @@ public:
     std::vector<float> in; //input: 2 eyes, sensors for R,G,B,proximity each, then Sound, Smell, Health
     std::vector<float> out; //output: Left, Right, R, G, B, SPIKE
 
+	float reprate;
     float repcounter; //when repcounter gets to 0, this bot reproduces
     int gencount; //generation counter
     bool hybrid; //is this agent result of crossover?

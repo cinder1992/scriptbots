@@ -10,8 +10,10 @@ class GLView;
 extern GLView* GLVIEW;
 
 void gl_processNormalKeys(unsigned char key, int x, int y);
+void gl_menu(int key);
 void gl_processMouse(int button, int state, int x, int y);
 void gl_processMouseActiveMotion(int x, int y);
+void gl_processMousePassiveMotion(int x, int y);
 void gl_changeSize(int w, int h);
 void gl_handleIdle();
 void gl_renderScene();
@@ -31,8 +33,10 @@ public:
     
     //GLUT functions
     void processNormalKeys(unsigned char key, int x, int y);
+	void menu(int key);
     void processMouse(int button, int state, int x, int y);
     void processMouseActiveMotion(int x, int y);
+	void processMousePassiveMotion(int x, int y);
     void changeSize(int w, int h);
     void handleIdle();
     void renderScene();

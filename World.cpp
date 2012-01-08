@@ -80,6 +80,7 @@ void World::update()
         float baseloss= 0.0002; // + 0.0001*(abs(agents[i].w1) + abs(agents[i].w2))/2;
         //if (agents[i].w1<0.1 && agents[i].w2<0.1) baseloss=0.0001; //hibernation :p
         //baseloss += 0.00005*agents[i].soundmul; //shouting costs energy. just a tiny bit
+		baseloss += agents[i].age/conf::MAXAGE*conf::AGEDAMAGE; //getting older reduces health. Age > MAXAGE = no health (GPA)
 
         if (agents[i].boost) {
             //boost carries its price, and it's pretty heavy!
@@ -152,6 +153,9 @@ void World::update()
     while (iter != agents.end()) {
         if (iter->health <=0) {
             iter= agents.erase(iter);
+		} else if(iter->selectflag==1 && deleting==1){
+			deleting= 0;
+			iter= agents.erase(iter);
         } else {
             ++iter;
         }
@@ -162,23 +166,23 @@ void World::update()
         if (agents[i].repcounter<0 && agents[i].health>0.65 && modcounter%15==0 && randf(0,1)<0.1) { //agent is healthy and is ready to reproduce. Also inject a bit non-determinism
             //agents[i].health= 0.8; //the agent is left vulnerable and weak, a bit
             reproduce(i, agents[i].MUTRATE1, agents[i].MUTRATE2); //this adds conf::BABIES new agents to agents[]
-            agents[i].repcounter= agents[i].herbivore*randf(conf::REPRATEH-0.1,conf::REPRATEH+0.1) + (1-agents[i].herbivore)*randf(conf::REPRATEC-0.1,conf::REPRATEC+0.1);
+			agents[i].repcounter= agents[i].reprate;
         }
     }
 
     //add new agents, if environment isn't closed
     if (!CLOSED) {
         //make sure environment is always populated with at least NUMBOTS bots
-        if (agents.size()<conf::NUMBOTS
-           ) {
+        if (agents.size()<conf::NUMBOTS) {
             //add new agent
             addRandomBots(1);
         }
-        if (modcounter%100==0) {
+        if (modcounter%200==0) {
             if (randf(0,1)<0.5){
                 addRandomBots(1); //every now and then add random bots in
-            }else
-                addNewByCrossover(); //or by crossover
+//            }else
+//                addNewByCrossover(); //or by crossover
+			}
         }
     }
 
@@ -193,7 +197,8 @@ void World::setInputs()
     float PI8=M_PI/8/2; //pi/8/2
     float PI38= 3*PI8; //3pi/8/2
     float PI4= M_PI/4;
-    
+   
+	#pragma omp parallel for
     for (int i=0;i<agents.size();i++) {
         Agent* a= &agents[i];
 
@@ -575,31 +580,55 @@ void World::reproduce(int ai, float MR, float MR2)
     }
 }
 
-void World::writeReport()
+void World::writeReport() //(GPA)
 {
-    //TODO fix reporting
+	printf("Writing Report, Epoch: %i\n", current_epoch); // (GPA)
     //save all kinds of nice data stuff
-//     int numherb=0;
-//     int numcarn=0;
-//     int topcarn=0;
-//     int topherb=0;
-//     for(int i=0;i<agents.size();i++){
-//         if(agents[i].herbivore>0.5) numherb++;
-//         else numcarn++;
-// 
-//         if(agents[i].herbivore>0.5 && agents[i].gencount>topherb) topherb= agents[i].gencount;
-//         if(agents[i].herbivore<0.5 && agents[i].gencount>topcarn) topcarn= agents[i].gencount;
-//     }
-// 
-//     FILE* fp = fopen("report.txt", "a");
-//     fprintf(fp, "%i %i %i %i\n", numherb, numcarn, topcarn, topherb);
-//     fclose(fp);
+    int numherb=0;
+    int numcarn=0;
+	int numfood=0;//(GPA)
+    int topcarn=0;
+    int topherb=0;
+	int age1_5th=0;//(GPA)
+	int age2_5th=0;//(GPA)
+	int age3_5th=0;//(GPA)
+	int age4_5th=0;//(GPA)
+	int age5_5th=0;//(GPA)
+
+    for(int i=0;i<agents.size();i++){
+		if(agents[i].herbivore>0.5) numherb++;
+		else numcarn++;
+ 
+		if(agents[i].herbivore>0.5 && agents[i].gencount>topherb) topherb= agents[i].gencount;
+		if(agents[i].herbivore<=0.5 && agents[i].gencount>topcarn) topcarn= agents[i].gencount;
+
+		if(agents[i].age>=(conf::MAXAGE/5) && agents[i].age<(conf::MAXAGE*2/5)) age1_5th++;
+		else if(agents[i].age>=(conf::MAXAGE*2/5) && agents[i].age<(conf::MAXAGE*3/5)) age2_5th++;
+		else if(agents[i].age>=(conf::MAXAGE*3/5) && agents[i].age<(conf::MAXAGE*4/5)) age3_5th++;
+		else if(agents[i].age>=(conf::MAXAGE*4/5) && agents[i].age<(conf::MAXAGE)) age4_5th++;
+		else if(agents[i].age>=(conf::MAXAGE)) age5_5th++;
+	}
+
+	for(int i=0;i<FW;i++) {
+		for(int j=0;j<FH;j++) {
+			float f= 0.5*food[i][j]/conf::FOODMAX;
+			if(f>conf::FOODMAX/2){
+				numfood++;
+			}
+		}
+	}
+ 
+	FILE* fr = fopen("report.txt", "a");
+	fprintf(fr, "Epoch: %i Agents: %i #Herb: %i #Carn: %i #0.5Food: %i TopH: %i TopC: %i Age>1/5Max: %i Age>2/5: %i Age>3/5: %i Age>4/5: %i Age>Max: %i\n",	current_epoch, numAgents(), numherb, numcarn, numfood, numcarn, topcarn, topherb, age1_5th, age2_5th, age3_5th, age4_5th, age5_5th);
+	fclose(fr);
 }
 
 
 void World::reset()
 {
     agents.clear();
+	FILE* fr = fopen("report.txt", "w");
+	fclose(fr);
     addRandomBots(conf::NUMBOTS);
 }
 

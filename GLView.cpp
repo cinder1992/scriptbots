@@ -1,5 +1,7 @@
 #include "GLView.h"
 
+#include <ctime>
+
 #include "config.h"
 #ifdef LOCAL_GLUT32
 #include "glut.h"
@@ -12,6 +14,10 @@
 void gl_processNormalKeys(unsigned char key, int x, int y)
 {
     GLVIEW->processNormalKeys(key, x, y);
+}
+void gl_menu(int key)
+{
+    GLVIEW->menu(key);
 }
 void gl_changeSize(int w, int h)
 {
@@ -28,6 +34,10 @@ void gl_processMouse(int button, int state, int x, int y)
 void gl_processMouseActiveMotion(int x, int y)
 {
     GLVIEW->processMouseActiveMotion(x,y);
+}
+void gl_processMousePassiveMotion(int x, int y)
+{
+    GLVIEW->processMousePassiveMotion(x,y);
 }
 void gl_renderScene()
 {
@@ -93,6 +103,12 @@ void GLView::processMouse(int button, int state, int x, int y)
     if(button==0){
         int wx= (int) ((x-conf::WWIDTH/2)/scalemult)-xtranslate;
         int wy= (int) ((y-conf::WHEIGHT/2)/scalemult)-ytranslate;
+		if(following!=0){
+			float xi=0, yi=0;
+			world->positionOfInterest(following, xi, yi);
+			wx+= (int) xi;
+			wy+= (int) yi;
+		}
         world->processMouse(button, state, wx, wy);
     }
     
@@ -110,59 +126,83 @@ void GLView::processMouseActiveMotion(int x, int y)
         if(scalemult<0.01) scalemult=0.01;
     }
     
-    if(downb[2]==1){
+/*    if(downb[2]==1){ //disabled (GPA)
         //right mouse button. Pan around
         xtranslate += 2*(x-mousex);
         ytranslate += 2*(y-mousey);
-    }
+    }*/
     
 //    printf("%f %f %f \n", scalemult, xtranslate, ytranslate);
     
-    mousex=x;
-    mousey=y;
+    mousex=x; mousey=y;
 }
 
-void GLView::processNormalKeys(unsigned char key, int x, int y)
+void GLView::processMousePassiveMotion(int x, int y)
 {
+	//(GPA) for mouse scrolling
+	if(y<=30) ytranslate += 2*(30-y);
+	if(y>=conf::WHEIGHT-30) ytranslate -= 2*(y-(conf::WHEIGHT-30));
+	if(x<=30) xtranslate += 2*(30-x);
+	if(x>=conf::WWIDTH-30) xtranslate -= 2*(x-(conf::WWIDTH-30));
+}
 
-    if (key == 27)
+void GLView::menu(int key) //(GPA)
+{
+	if (key == 27)
         exit(0);
-    else if (key=='r') {
+    else if (key==9) {
         world->reset();
         printf("Agents reset\n");
     } else if (key=='p') {
         //pause
         paused= !paused;
-    } else if (key=='d') {
-        //drawing
+	} else if (key=='w') {
+        ytranslate += 10/scalemult;
+	} else if (key=='a') {
+		xtranslate += 10/scalemult;
+	} else if (key=='s') {
+		ytranslate -= 10/scalemult;
+	} else if (key=='d') { // (GPA) movement control
+		xtranslate -= 10/scalemult;
+    } else if (key=='m') { //drawing
         draw= !draw;
-    } else if (key==43) {
-        //+
+    } else if (key==43) { //+
         skipdraw++;
-
-    } else if (key==45) {
-        //-
+    } else if (key==45) { //-
         skipdraw--;
     } else if (key=='f') {
         drawfood=!drawfood;
-    } else if (key=='a') {
+    } else if (key=='e') {
         for (int i=0;i<10;i++){world->addNewByCrossover();}
-    } else if (key=='q') {
+    } else if (key=='g') {
         for (int i=0;i<10;i++){world->addCarnivore();}
     } else if (key=='h') {
         for (int i=0;i<10;i++){world->addHerbivore();}
     } else if (key=='c') {
         world->setClosed( !world->isClosed() );
         printf("Environment closed now= %i\n",world->isClosed());
-    } else if (key=='s') {
+    } else if (key=='l') {
         if(following==0) following=2;
         else following=0;
+	}else if (key==127) { //delete
+		world->deleting= 1;
     } else if(key =='o') {
         if(following==0) following = 1; //follow oldest agent: toggle
         else following =0;
+	}else if (key==62) { //zoom+ >
+		scalemult += 0.006;
+        if(scalemult<0.01) scalemult=0.01;
+	}else if (key==60) { //zoom- <
+		scalemult -= 0.006;
     } else {
         printf("Unknown key pressed: %i\n", key);
     }
+}
+
+
+void GLView::processNormalKeys(unsigned char key, int x, int y)
+{
+	menu(key);    
 }
 
 void GLView::handleIdle()
@@ -193,7 +233,6 @@ void GLView::handleIdle()
         }
         else renderScene(); //we will decrease fps by waiting using clocks
     }
-
 }
 
 void GLView::renderScene()
@@ -451,20 +490,20 @@ void GLView::drawAgent(const Agent& agent)
     //print stats
     //generation count
     sprintf(buf2, "%i", agent.gencount);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
+    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
     //age
     sprintf(buf2, "%i", agent.age);
-    float x = agent.age/1000.0;
+	float x = (float) agent.age/conf::MAXAGE;
     if(x>1)x=1;
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+12, GLUT_BITMAP_TIMES_ROMAN_24, buf2, x, 0.0f, 0.0f);
+    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+12, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0-x, 1.0-x);
 
     //health
     sprintf(buf2, "%.2f", agent.health);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
+    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
 
     //repcounter
     sprintf(buf2, "%.2f", agent.repcounter);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
+    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
 }
 
 void GLView::drawMisc()
@@ -489,8 +528,10 @@ void GLView::drawMisc()
     glVertex3f(world->ptr*10,-mm*100,0);
     glEnd();
     
-    RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press d for extra speed", 0.0f, 0.0f, 0.0f);
-    RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press s to follow selected agent, o to follow oldest", 0.0f, 0.0f, 0.0f);
+    RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed", 0.0f, 0.0f, 0.0f);
+    RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest", 0.0f, 0.0f, 0.0f);
+	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 1.0f, 1.0f, 0.0f);
+	if(!draw) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "FAST MODE", 1.0f, 1.0f, 0.0f);
 }
 
 void GLView::drawFood(int x, int y, float quantity)
@@ -498,7 +539,7 @@ void GLView::drawFood(int x, int y, float quantity)
     //draw food
     if (drawfood) {
         glBegin(GL_QUADS);
-        glColor3f(0.9-quantity,0.9-quantity,1.0-quantity);
+        glColor3f(0,quantity,0.1);
         glVertex3f(x*conf::CZ,y*conf::CZ,0);
         glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
         glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
