@@ -1,13 +1,16 @@
-1/3/12 (GhengopelALPHA) changes
-- changed process keys to allow right-click context menu. Added scroll for mouse movement near window edge. Removed right-click-move scroll ability (interference with context menu)
-+ Added "delete" function: press the delete key when a bot is selected and it will be removed.
-- Changed color scheme (don't like the white and gray background)
-- Fixed agent selection to get correct world x&y when following
-+ Added new reprate variable for bots, and is the number repcounter is reset to, with the fastest possible reprate defined by MINREPRATE. Is inherited.
+1/13/12 changes
++ added MINFOOD constant; number of food cells with 50% MAXFOOD will never fall below this number.
++ added speed (skipdraw) report to window title
++ added new type of mutation: box copy. All attributes are copied from one box to another.
++ added David Coleman's code for hiding stats when zoomed out and custom epoch report frequency, added Anaal Nathrakh's code for closed state reporting, 
+= changed/added display of total population on graph by using the cursor-line. Added a numerical display also. Shows possible change in population as well.
+= Fixed follow agent and follow oldest so that the screen stays at its location when either is toggled off (no nasty jumping back to previous location)
+= Fixed selecting of agents while following. Now you can select the oldest agent while following him, or select others of interest nearby!
+= Fixed bugs with reporting (not clearing the file on reload, incorrect values to some fields)
 
 1/1/2012 changes
 - made many more variables per agent customizable and inheritable (such as eye sensitivity etc)
-- added two more keys: 's' follows the selected agent around. 'o' follows the oldest agent around.
+- added two more keys: 's' follows the selected agent around. 'o' follows the oldest agent around. ('l' and 'o' in this version)
 - number of carnivores and herbivores are now visualized on top of the world
 - added a new type of brain: assembly brain, but it needs much more work. i.e. don't use
 

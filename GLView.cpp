@@ -101,15 +101,10 @@ void GLView::processMouse(int button, int state, int x, int y)
     
     //have world deal with it. First translate to world coordinates though
     if(button==0){
-        int wx= (int) ((x-conf::WWIDTH/2)/scalemult)-xtranslate;
-        int wy= (int) ((y-conf::WHEIGHT/2)/scalemult)-ytranslate;
-		if(following!=0){
-			float xi=0, yi=0;
-			world->positionOfInterest(following, xi, yi);
-			wx+= (int) xi;
-			wy+= (int) yi;
-		}
-        world->processMouse(button, state, wx, wy);
+        int wx= (int) ((x-conf::WWIDTH/2)/scalemult-xtranslate);
+        int wy= (int) ((y-conf::WHEIGHT/2)/scalemult-ytranslate);
+
+		world->processMouse(button, state, wx, wy);
     }
     
     mousex=x; mousey=y;
@@ -157,13 +152,13 @@ void GLView::menu(int key) //(GPA)
         //pause
         paused= !paused;
 	} else if (key=='w') {
-        ytranslate += 10/scalemult;
+        ytranslate += 20/scalemult;
 	} else if (key=='a') {
-		xtranslate += 10/scalemult;
+		xtranslate += 20/scalemult;
 	} else if (key=='s') {
-		ytranslate -= 10/scalemult;
+		ytranslate -= 20/scalemult;
 	} else if (key=='d') { // (GPA) movement control
-		xtranslate -= 10/scalemult;
+		xtranslate -= 20/scalemult;
     } else if (key=='m') { //drawing
         draw= !draw;
     } else if (key==43) { //+
@@ -180,7 +175,7 @@ void GLView::menu(int key) //(GPA)
         for (int i=0;i<10;i++){world->addHerbivore();}
     } else if (key=='c') {
         world->setClosed( !world->isClosed() );
-        printf("Environment closed now= %i\n",world->isClosed());
+        printf("Environment closed now= %s\n",(world->isClosed() ? "true" : "false" )); //(Anaal Nathrakh)
     } else if (key=='l') {
         if(following==0) following=2;
         else following=0;
@@ -190,10 +185,10 @@ void GLView::menu(int key) //(GPA)
         if(following==0) following = 1; //follow oldest agent: toggle
         else following =0;
 	}else if (key==62) { //zoom+ >
-		scalemult += 0.006;
+		scalemult += 0.012;
         if(scalemult<0.01) scalemult=0.01;
 	}else if (key==60) { //zoom- <
-		scalemult -= 0.006;
+		scalemult -= 0.012;
     } else {
         printf("Unknown key pressed: %i\n", key);
     }
@@ -215,7 +210,7 @@ void GLView::handleIdle()
     frames++;
     if ((currentTime - lastUpdate) >= 1000) {
         std::pair<int,int> num_herbs_carns = world->numHerbCarnivores();
-        sprintf( buf, "FPS: %d NumAgents: %d Carnivors: %d Herbivors: %d Epoch: %d", frames, world->numAgents(), num_herbs_carns.second, num_herbs_carns.first, world->epoch() );
+		sprintf( buf, "FPS: %d speed: %d NumAgents: %d Carnivors: %d Herbivors: %d Epoch: %d", frames, skipdraw, world->numAgents(), num_herbs_carns.second, num_herbs_carns.first, world->epoch() );
         glutSetWindowTitle( buf );
         frames = 0;
         lastUpdate = currentTime;
@@ -243,20 +238,17 @@ void GLView::renderScene()
     glTranslatef(conf::WWIDTH/2, conf::WHEIGHT/2, 0.0f);    
     glScalef(scalemult, scalemult, 1.0f);
     
-    if(following==0) {
-        glTranslatef(xtranslate, ytranslate, 0.0f);    
-    } else {
-        
+	if(following!=0){
         float xi=0, yi=0;
         world->positionOfInterest(following, xi, yi);
-        //xi= (conf::WWIDTH/2-xi); //*scalemult;
-        //yi= (conf::WHEIGHT/2-yi); //*scalemult;
+
+		xtranslate= -xi; ytranslate= -yi;
         
-        glTranslatef(-xi, -yi, 0.0f);
-        
+      
         //reset this if there is no interest. Probably agent that was followed died
         if(xi==0 && yi==0) following = 0;
     }
+	glTranslatef(xtranslate, ytranslate, 0.0f);
     
     world->draw(this, drawfood);
 
@@ -488,22 +480,25 @@ void GLView::drawAgent(const Agent& agent)
     glEnd();
 
     //print stats
-    //generation count
-    sprintf(buf2, "%i", agent.gencount);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
-    //age
-    sprintf(buf2, "%i", agent.age);
-	float x = (float) agent.age/conf::MAXAGE;
-    if(x>1)x=1;
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+12, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0-x, 1.0-x);
+	if(scalemult > .5) { //(David Coleman) Hide the number stats when zoomed out
+		//generation count
+		sprintf(buf2, "%i", agent.gencount);
+		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
 
-    //health
-    sprintf(buf2, "%.2f", agent.health);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
+		//age
+		sprintf(buf2, "%i", agent.age);
+		float x = (float) agent.age/conf::MAXAGE;
+		if(x>1)x=1;
+		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+12, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0-x, 1.0-x);
 
-    //repcounter
-    sprintf(buf2, "%.2f", agent.repcounter);
-    RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
+		//health
+		sprintf(buf2, "%.2f", agent.health);
+		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
+
+		//repcounter
+		sprintf(buf2, "%.2f", agent.repcounter);
+		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
+	}
 }
 
 void GLView::drawMisc()
@@ -525,13 +520,16 @@ void GLView::drawMisc()
     }
     glColor3f(0,0,0);
     glVertex3f(world->ptr*10,-20,0);
-    glVertex3f(world->ptr*10,-mm*100,0);
+	glVertex3f(world->ptr*10,-20 -mm*world->numAgents(),0);
     glEnd();
+	sprintf(buf2, "%i", world->numAgents());
+	RenderString(world->ptr*10 + 3,-20 -mm*world->numAgents(), GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
     
     RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed", 0.0f, 0.0f, 0.0f);
     RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest", 0.0f, 0.0f, 0.0f);
-	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 1.0f, 1.0f, 0.0f);
-	if(!draw) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "FAST MODE", 1.0f, 1.0f, 0.0f);
+	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 0.0f, 0.0f, 0.0f);
+	if(!draw) RenderString(3500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "FAST MODE", 0.0f, 0.0f, 0.0f);
+	if(world->isClosed()) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "CLOSED WORLD", 0.0f, 0.0f, 0.0f);
 }
 
 void GLView::drawFood(int x, int y, float quantity)

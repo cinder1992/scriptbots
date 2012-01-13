@@ -17,6 +17,10 @@ World::World() :
         FH(conf::HEIGHT/conf::CZ),
         CLOSED(false)
 {
+	//start the report file. null it up if it exists
+	FILE* fp = fopen("report.txt", "w");
+	fclose(fp);
+
     addRandomBots(conf::NUMBOTS);
     //inititalize food layer
 
@@ -25,6 +29,9 @@ World::World() :
             food[x][y]= 0;
         }
     }
+	while(numFood()<conf::MINFOOD) {
+		food[randi(0,FW)][randi(0,FH)] = conf::FOODMAX;
+	}
     
     numCarnivore.resize(200, 0);
     numHerbivore.resize(200, 0);
@@ -43,19 +50,22 @@ void World::update()
         }        
     }
     
-    if(modcounter%1000==0){
+	if (conf::REPORTS_PER_EPOCH>0 && (modcounter%(10000/conf::REPORTS_PER_EPOCH)==0)) { //(David Coleman) Added custom report frequency
+		//write report and record herbivore/carnivore counts
         std::pair<int,int> num_herbs_carns = numHerbCarnivores();
         numHerbivore[ptr]= num_herbs_carns.first;
         numCarnivore[ptr]= num_herbs_carns.second;
         ptr++;
         if(ptr == numHerbivore.size()) ptr = 0;
-    }
-    if (modcounter%1000==0) writeReport();
+
+		writeReport();
+	}
+
     if (modcounter>=10000) {
         modcounter=0;
         current_epoch++;
     }
-    if (modcounter%conf::FOODADDFREQ==0) {
+	if (modcounter%conf::FOODADDFREQ==0 || numFood()<conf::MINFOOD) {
         fx=randi(0,FW);
         fy=randi(0,FH);
         food[fx][fy]= conf::FOODMAX;
@@ -586,7 +596,6 @@ void World::writeReport() //(GPA)
     //save all kinds of nice data stuff
     int numherb=0;
     int numcarn=0;
-	int numfood=0;//(GPA)
     int topcarn=0;
     int topherb=0;
 	int age1_5th=0;//(GPA)
@@ -609,17 +618,9 @@ void World::writeReport() //(GPA)
 		else if(agents[i].age>=(conf::MAXAGE)) age5_5th++;
 	}
 
-	for(int i=0;i<FW;i++) {
-		for(int j=0;j<FH;j++) {
-			float f= 0.5*food[i][j]/conf::FOODMAX;
-			if(f>conf::FOODMAX/2){
-				numfood++;
-			}
-		}
-	}
- 
 	FILE* fr = fopen("report.txt", "a");
-	fprintf(fr, "Epoch: %i Agents: %i #Herb: %i #Carn: %i #0.5Food: %i TopH: %i TopC: %i Age>1/5Max: %i Age>2/5: %i Age>3/5: %i Age>4/5: %i Age>Max: %i\n",	current_epoch, numAgents(), numherb, numcarn, numfood, numcarn, topcarn, topherb, age1_5th, age2_5th, age3_5th, age4_5th, age5_5th);
+	fprintf(fr, "Epoch: %i Agents: %i #Herb: %i #Carn: %i #0.5Food: %i TopH: %i TopC: %i Age>1/5Max: %i Age>2/5: %i Age>3/5: %i Age>4/5: %i Age>Max: %i\n",
+		current_epoch, numAgents(), numherb, numcarn, numFood(), topcarn, topherb, age1_5th, age2_5th, age3_5th, age4_5th, age5_5th);
 	fclose(fr);
 }
 
@@ -627,9 +628,10 @@ void World::writeReport() //(GPA)
 void World::reset()
 {
     agents.clear();
+	addRandomBots(conf::NUMBOTS);
+
 	FILE* fr = fopen("report.txt", "w");
 	fclose(fr);
-    addRandomBots(conf::NUMBOTS);
 }
 
 void World::setClosed(bool close)
@@ -651,7 +653,7 @@ void World::processMouse(int button, int state, int x, int y)
          float d;
 
          for (int i=0;i<agents.size();i++) {
-             d= pow(x-agents[i].pos.x,2)+pow(y-agents[i].pos.y,2);
+			 d= pow(x-agents[i].pos.x,2)+pow(y-agents[i].pos.y,2);
                  if (d<mind) {
                      mind=d;
                      mini=i;
@@ -700,6 +702,20 @@ std::pair< int,int > World::numHerbCarnivores() const
 int World::numAgents() const
 {
     return agents.size();
+}
+
+int World::numFood() const //(GPA) count food cells with 50% food or more
+{
+	int numfood=0;
+	for(int i=0;i<FW;i++) {
+		for(int j=0;j<FH;j++) {
+			float f= 0.5*food[i][j]/conf::FOODMAX;
+			if(f>conf::FOODMAX/2){
+				numfood++;
+			}
+		}
+	}
+	return numfood;
 }
 
 int World::epoch() const

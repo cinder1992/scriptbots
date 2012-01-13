@@ -28,6 +28,7 @@ public:
     std::pair<int,int> numHerbCarnivores() const;
     
     int numAgents() const;
+	int numFood() const;
     int epoch() const;
     
     //mouse interaction

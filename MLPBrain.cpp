@@ -133,6 +133,19 @@ void MLPBrain::tick(vector< float >& in, vector< float >& out)
 void MLPBrain::mutate(float MR, float MR2)
 {
     for (int j=0;j<BRAINSIZE;j++) {
+		if (randf(0,1)<MR) {
+			int k= randi(0,BRAINSIZE);
+			if(k!=j) {
+				boxes[j].type= boxes[k].type;
+				boxes[j].id= boxes[k].id;
+				boxes[j].bias= boxes[k].bias;
+				boxes[j].kp= boxes[k].kp;
+				boxes[j].type= boxes[k].type;
+				boxes[j].w= boxes[k].w;
+//				a2.mutations.push_back("box coppied\n");
+				break; //cancel all other mutations for box j
+			}
+		}
 
         if (randf(0,1)<MR) {
             boxes[j].bias+= randn(0, MR2);
@@ -149,7 +162,7 @@ void MLPBrain::mutate(float MR, float MR2)
         if (randf(0,1)<MR) {
             boxes[j].gw+= randn(0, MR2);
             if (boxes[j].gw<0) boxes[j].gw=0;
-//             a2.mutations.push_back("kp jiggled\n");
+//             a2.mutations.push_back("global weight jiggled\n");
         }
 
         if (randf(0,1)<MR) {
@@ -161,7 +174,7 @@ void MLPBrain::mutate(float MR, float MR2)
         if (randf(0,1)<MR) {
             int rc= randi(0, CONNS);
             boxes[j].type[rc] = 1 - boxes[j].type[rc]; //flip type of synapse
-//          a2.mutations.push_back("weight jiggled\n");
+//          a2.mutations.push_back("synapse switched\n");
         }
 
         //more unlikely changes here

@@ -1,6 +1,6 @@
 SCRIPTBOTS
 Author: Andrej Karpathy
-Contributors: Casey Link
+Contributors: Casey Link, Julian Hershey
 Licence: BSD
 
 Project website and attached forum: 
@@ -30,12 +30,14 @@ To execute ScriptBots simply type the following in the build directory:
 $ ./scriptbots
 
 For Windows:
-Follow basically the same steps, but after running cmake open up the VS solution (.sln) file it generates and compile the project from VS.
+Follow basically the same steps, but after running cmake (with default options) open up the
+VS solution (.sln) file it generates and compile the project from VS.
 
 USAGE:
 
-Compile and run. Hit 'd' to make it go MUCH FASTER (and not draw). Speed can
-also be controlled with + and -. Use mouse to pan and zoom around.
+Compile and run. Hit 'm' to make it go MUCH FASTER (and not draw). Speed can
+also be controlled with + and -. Use mouse to pan and zoom, or the 'w,a,s,d'
+and '<,>' keys respectively. Right-click the world for more options.
 
 
 QUESTIONS COMMENTS are best posted at the google group, available on project site

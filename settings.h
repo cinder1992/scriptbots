@@ -15,6 +15,9 @@ namespace conf {
     const int WHEIGHT = 700;
     
     const int CZ = 50; //cell size in pixels, for food squares. Should divide well into Width Height
+	const int MINFOOD = 1000; //minimum number of cells which must have 50% food or more
+
+	const int   REPORTS_PER_EPOCH = 10; // number of times to record data per epoch. 0 for off. (David Coleman)
     
     const int NUMBOTS=30; //initially, and minimally
     const float BOTRADIUS=10; //for drawing
