@@ -167,9 +167,9 @@ void GLView::menu(int key) //(GPA)
         skipdraw--;
     } else if (key=='f') {
         drawfood=!drawfood;
-    } else if (key=='e') {
+    } else if (key=='b') {
         for (int i=0;i<10;i++){world->addNewByCrossover();}
-    } else if (key=='g') {
+    } else if (key=='n') {
         for (int i=0;i<10;i++){world->addCarnivore();}
     } else if (key=='h') {
         for (int i=0;i<10;i++){world->addHerbivore();}
@@ -177,21 +177,29 @@ void GLView::menu(int key) //(GPA)
         world->setClosed( !world->isClosed() );
         printf("Environment closed now= %s\n",(world->isClosed() ? "true" : "false" )); //(Anaal Nathrakh)
     } else if (key=='l') {
-        if(following==0) following=2;
-        else following=0;
+        if(following==0) following= 2;
+        else following= 0;
+	} else if(key=='o') {
+        if(following==0) following= 1; //follow oldest agent: toggle
+        else following= 0;
+	} else if(key=='g') {
+		if(following==0) following= 3;
+		else following= 0;
 	}else if (key==127) { //delete
 		world->deleting= 1;
-    } else if(key =='o') {
-        if(following==0) following = 1; //follow oldest agent: toggle
-        else following =0;
-	}else if (key==62) { //zoom+ >
+    }else if (key==62) { //zoom+ >
 		scalemult += 0.012;
         if(scalemult<0.01) scalemult=0.01;
 	}else if (key==60) { //zoom- <
 		scalemult -= 0.012;
+	}else if (key==32) { //spacebar
+		world->pinput1+= 20;
     } else {
         printf("Unknown key pressed: %i\n", key);
     }
+	if (key!=32) {
+		world->pinput1= 0;
+	}
 }
 
 
@@ -210,7 +218,8 @@ void GLView::handleIdle()
     frames++;
     if ((currentTime - lastUpdate) >= 1000) {
         std::pair<int,int> num_herbs_carns = world->numHerbCarnivores();
-		sprintf( buf, "FPS: %d speed: %d NumAgents: %d Carnivors: %d Herbivors: %d Epoch: %d", frames, skipdraw, world->numAgents(), num_herbs_carns.second, num_herbs_carns.first, world->epoch() );
+		sprintf( buf, "FPS: %d speed: %d NumAgents: %d Carnivors: %d Herbivors: %d Epoch: %d",
+			frames, skipdraw, world->numAgents(), num_herbs_carns.second, num_herbs_carns.first, world->epoch() );
         glutSetWindowTitle( buf );
         frames = 0;
         lastUpdate = currentTime;
@@ -408,7 +417,7 @@ void GLView::drawAgent(const Agent& agent)
 
     glBegin(GL_LINES);
     //outline
-    if (agent.boost) glColor3f(0.8,0,0); //draw boost as green outline
+    if (agent.boost) glColor3f(0.8,0,0); //draw boost as red outline
     else glColor3f(0,0,0);
 
     for (int k=0;k<17;k++)
@@ -424,63 +433,63 @@ void GLView::drawAgent(const Agent& agent)
     glVertex3f(agent.pos.x+(3*r*agent.spikeLength)*cos(agent.angle),agent.pos.y+(3*r*agent.spikeLength)*sin(agent.angle),0);
     glEnd();
 
-    //and health
-    int xo=18;
-    int yo=-15;
-    glBegin(GL_QUADS);
-    //black background
-    glColor3f(0,0,0);
-    glVertex3f(agent.pos.x+xo,agent.pos.y+yo,0);
-    glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo,0);
-    glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
-    glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
+	if(scalemult > .3) {//hide extra visual data if really far away
+		//and health
+		int xo=18;
+		int yo=-15;
+		glBegin(GL_QUADS);
+		//black background
+		glColor3f(0,0,0);
+		glVertex3f(agent.pos.x+xo,agent.pos.y+yo,0);
+		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo,0);
+		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
+		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
 
-    //health
-    glColor3f(0,0.8,0);
-    glVertex3f(agent.pos.x+xo,agent.pos.y+yo+20*(2-agent.health),0);
-    glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+20*(2-agent.health),0);
-    glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
-    glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
+		//health
+		glColor3f(0,0.8,0);
+		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+20*(2-agent.health),0);
+		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+20*(2-agent.health),0);
+		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
+		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
 
-    //if this is a hybrid, we want to put a marker down
-    if (agent.hybrid) {
-        glColor3f(0,0,0.8);
-        glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo,0);
-        glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo,0);
-        glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+10,0);
-        glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+10,0);
-    }
+		//if this is a hybrid, we want to put a marker down
+		if (agent.hybrid) {
+			glColor3f(0,0,0.8);
+			glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo,0);
+			glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo,0);
+			glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+10,0);
+			glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+10,0);
+		}
 
-    glColor3f(1-agent.herbivore,agent.herbivore,0);
-    glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+12,0);
-    glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+12,0);
-    glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+22,0);
-    glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+22,0);
+		glColor3f(1-agent.herbivore,agent.herbivore,0);
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+12,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+12,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+22,0);
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+22,0);
 
-    //how much sound is this bot making?
-    glColor3f(agent.soundmul,agent.soundmul,agent.soundmul);
-    glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+24,0);
-    glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+24,0);
-    glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+34,0);
-    glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+34,0);
+		//how much sound is this bot making?
+		glColor3f(agent.soundmul,agent.soundmul,agent.soundmul);
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+24,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+24,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+34,0);
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+34,0);
 
-    //draw giving/receiving
-    if (agent.dfood!=0) {
-
-        float mag=cap(abs(agent.dfood)/conf::FOODTRANSFER/3);
-        if (agent.dfood>0) glColor3f(0,mag,0); //draw boost as green outline
-        else glColor3f(mag,0,0);
-        glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+36,0);
-        glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+36,0);
-        glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+46,0);
-        glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+46,0);
-    }
-
+		//draw temp discomfort indicator
+		//calculate temperature at the agents spot. (based on distance from horizontal equator)
+		float dd= 2.0*abs(agent.pos.y/conf::HEIGHT - 0.5);
+        float discomfort= cap(sqrt(abs(dd-agent.temperature_preference)));
+        if (discomfort<0.08) discomfort=0;
+		glColor3f(1,(2-discomfort)/2,(1-discomfort));
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+36,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+36,0);
+		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+46,0);
+		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+46,0);
+	}
 
     glEnd();
 
     //print stats
-	if(scalemult > .5) { //(David Coleman) Hide the number stats when zoomed out
+	if(scalemult > .7) { // hide the number stats when zoomed out
 		//generation count
 		sprintf(buf2, "%i", agent.gencount);
 		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
@@ -526,9 +535,9 @@ void GLView::drawMisc()
 	RenderString(world->ptr*10 + 3,-20 -mm*world->numAgents(), GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
     
     RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed", 0.0f, 0.0f, 0.0f);
-    RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest", 0.0f, 0.0f, 0.0f);
+    RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest, g to follow most advanced gen", 0.0f, 0.0f, 0.0f);
 	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 0.0f, 0.0f, 0.0f);
-	if(!draw) RenderString(3500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "FAST MODE", 0.0f, 0.0f, 0.0f);
+	if(following!=0) RenderString(3500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.0f, 0.0f, 0.0f);
 	if(world->isClosed()) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "CLOSED WORLD", 0.0f, 0.0f, 0.0f);
 }
 
@@ -536,8 +545,10 @@ void GLView::drawFood(int x, int y, float quantity)
 {
     //draw food
     if (drawfood) {
+//		float dd= 0.5;
+//		if (conf::TEMPERATURE_DISCOMFORT!=0) dd= 2.0*abs(y*conf::CZ/conf::HEIGHT - 0.5);
         glBegin(GL_QUADS);
-        glColor3f(0,quantity,0.1);
+        glColor3f(0.0,quantity,0.1);
         glVertex3f(x*conf::CZ,y*conf::CZ,0);
         glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
         glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);

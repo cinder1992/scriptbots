@@ -46,6 +46,7 @@ public:
     int ptr;
 
 	int deleting;
+	int pinput1;
     
 private:
     void setInputs();

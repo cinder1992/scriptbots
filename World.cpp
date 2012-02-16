@@ -29,7 +29,7 @@ World::World() :
             food[x][y]= 0;
         }
     }
-	while(numFood()<conf::MINFOOD) {
+	while(numFood()<conf::INITFOOD) {
 		food[randi(0,FW)][randi(0,FH)] = conf::FOODMAX;
 	}
     
@@ -41,6 +41,9 @@ World::World() :
 void World::update()
 {
     modcounter++;
+	vector<int> dt;
+	float tinit;
+	float tfin;
 
     //Process periodic events
     //Age goes up!
@@ -50,7 +53,7 @@ void World::update()
         }        
     }
     
-	if (conf::REPORTS_PER_EPOCH>0 && (modcounter%(10000/conf::REPORTS_PER_EPOCH)==0)) { //(David Coleman) Added custom report frequency
+	if (conf::REPORTS_PER_EPOCH>0 && (modcounter%(10000/conf::REPORTS_PER_EPOCH)==0)) { //Added custom report frequency
 		//write report and record herbivore/carnivore counts
         std::pair<int,int> num_herbs_carns = numHerbCarnivores();
         numHerbivore[ptr]= num_herbs_carns.first;
@@ -70,14 +73,45 @@ void World::update()
         fy=randi(0,FH);
         food[fx][fy]= conf::FOODMAX;
     }
+
+	for(int x=0;x<FW;x++){
+		for(int y=0;y<FH;y++){
+			if (food[x][y]>0) {
+				food[x][y]+= conf::FOODGROWTH; //food quantity is changed by FOODGROWTH
+
+				if (randf(0,1)<conf::FOODSPREAD && food[x][y]>conf::FOODMAX/2) {
+					int ox= randi(x-1,x+2);
+					int oy= randi(y-1,y+2);
+					if (ox<1) ox= FW-1;
+					if (ox>FW-1) ox= 0;
+					if (oy<1) oy= FH-1;
+					if (oy>FH-1) oy= 0;
+					food[ox][oy]+= conf::FOODMAX/3;
+					if (food[ox][oy]>conf::FOODMAX) food[ox][oy]= conf::FOODMAX;
+				}
+			}
+
+			if(food[x][y]>conf::FOODMAX) food[x][y]=conf::FOODMAX; //cap at FOODMAX
+			if(food[x][y]<0) food[x][y]= 0;
+
+		}
+	}
     
     //reset any counter variables per agent
     for(int i=0;i<agents.size();i++){
         agents[i].spiked= false;
+
+		//process indicator (used in drawing)
+        if(agents[i].indicator>0) agents[i].indicator -= 1;
+
+		//reset dfood for processOutputs
+        agents[i].dfood=0;
     }
 
     //give input to every agent. Sets in[] array
     setInputs();
+
+	pinput1= int(pinput1/2);
 
     //brains tick. computes in[] -> out[]
     brainsTick();
@@ -85,35 +119,33 @@ void World::update()
     //read output and process consequences of bots on environment. requires out[]
     processOutputs();
 
-    //process bots: health and deaths
+    //process bots:
     for (int i=0;i<agents.size();i++) {
-        float baseloss= 0.0002; // + 0.0001*(abs(agents[i].w1) + abs(agents[i].w2))/2;
+		//health and deaths
+        float baseloss= 0.0005; // + 0.0001*(abs(agents[i].w1) + abs(agents[i].w2))/2;
         //if (agents[i].w1<0.1 && agents[i].w2<0.1) baseloss=0.0001; //hibernation :p
-        //baseloss += 0.00005*agents[i].soundmul; //shouting costs energy. just a tiny bit
+
 		baseloss += agents[i].age/conf::MAXAGE*conf::AGEDAMAGE; //getting older reduces health. Age > MAXAGE = no health (GPA)
 
-        if (agents[i].boost) {
-            //boost carries its price, and it's pretty heavy!
-            agents[i].health -= baseloss*conf::BOOSTSIZEMULT*1.3;
-        } else {
-            agents[i].health -= baseloss;
-        }
-    }
-    
-    //process temperature preferences
-    for (int i=0;i<agents.size();i++) {
-    
-        //calculate temperature at the agents spot. (based on distance from equator)
-        float dd= 2.0*abs(agents[i].pos.x/conf::WIDTH - 0.5);
-        float discomfort= abs(dd-agents[i].temperature_preference);
-        discomfort= discomfort*discomfort;
+		if (agents[i].boost) { //if boosting, init baseloss + age loss is multiplied
+            baseloss *= conf::BOOSTSIZEMULT*1.2;
+		}
+   
+		//process temperature preferences
+        //calculate temperature at the agents spot. (based on distance from horizontal equator)
+		float dd= 2.0*abs(agents[i].pos.y/conf::HEIGHT - 0.5);
+        float discomfort= sqrt(abs(dd-agents[i].temperature_preference));
         if (discomfort<0.08) discomfort=0;
-        agents[i].health -= conf::TEMPERATURE_DISCOMFORT*discomfort;
-    }
+        baseloss += conf::TEMPERATURE_DISCOMFORT*discomfort; //add to baseloss
 
-    //process indicator (used in drawing)
-    for (int i=0;i<agents.size();i++){
-        if(agents[i].indicator>0) agents[i].indicator -= 1;
+		agents[i].health -= baseloss;
+
+		//handle reproduction
+        if (agents[i].repcounter<0 && agents[i].health>0.65 && modcounter%15==0 && randf(0,1)<0.1) { //agent is healthy and is ready to reproduce. Also inject a bit non-determinism
+            //agents[i].health= 0.8; //the agent is left vulnerable and weak, a bit
+            reproduce(i, agents[i].MUTRATE1, agents[i].MUTRATE2); //this adds conf::BABIES new agents to agents[]
+			agents[i].repcounter= agents[i].reprate;
+        }
     }
 
     //remove dead agents.
@@ -128,7 +160,7 @@ void World::update()
             //first figure out how many are around, to distribute this evenly
             int numaround=0;
             for (int j=0;j<agents.size();j++) {
-                if (agents[j].health>0) {
+                if (agents[j].herbivore < .5 && i!=j ) { //only carnivores get food. not same agent as dyingif (agents[j].herbivore < .5 && i!=j ) { //only carnivores get food. not same agent as dying
                     float d= (agents[i].pos-agents[j].pos).length();
                     if (d<conf::FOOD_DISTRIBUTION_RADIUS) {
                         numaround++;
@@ -145,7 +177,7 @@ void World::update()
             if (numaround>0) {
                 //distribute its food evenly
                 for (int j=0;j<agents.size();j++) {
-                    if (agents[j].health>0) {
+                    if (agents[j].herbivore < .5 && i!=j ) { //only carnivores get food. not same agent as dying
                         float d= (agents[i].pos-agents[j].pos).length();
                         if (d<conf::FOOD_DISTRIBUTION_RADIUS) {
                             agents[j].health += 5*(1-agents[j].herbivore)*(1-agents[j].herbivore)/pow(numaround,1.25)*agemult;
@@ -171,15 +203,6 @@ void World::update()
         }
     }
 
-    //handle reproduction
-    for (int i=0;i<agents.size();i++) {
-        if (agents[i].repcounter<0 && agents[i].health>0.65 && modcounter%15==0 && randf(0,1)<0.1) { //agent is healthy and is ready to reproduce. Also inject a bit non-determinism
-            //agents[i].health= 0.8; //the agent is left vulnerable and weak, a bit
-            reproduce(i, agents[i].MUTRATE1, agents[i].MUTRATE2); //this adds conf::BABIES new agents to agents[]
-			agents[i].repcounter= agents[i].reprate;
-        }
-    }
-
     //add new agents, if environment isn't closed
     if (!CLOSED) {
         //make sure environment is always populated with at least NUMBOTS bots
@@ -201,8 +224,8 @@ void World::update()
 
 void World::setInputs()
 {
-    //P1 R1 G1 B1 FOOD P2 R2 G2 B2 SOUND SMELL HEALTH P3 R3 G3 B3 CLOCK1 CLOCK 2 HEARING     BLOOD_SENSOR   TEMPERATURE_SENSOR
-    //0   1  2  3  4   5   6  7 8   9     10     11   12 13 14 15 16       17      18           19                 20
+    //P1 R1 G1 B1 FOOD P2 R2 G2 B2 SOUND SMELL HEALTH P3 R3 G3 B3 CLOCK1 CLOCK 2 HEARING BLOOD_SENSOR TEMPERATURE_SENSOR PLAYER_INPUT1
+    //0   1  2  3  4   5   6  7 8   9     10     11   12 13 14 15  16      17      18        19               20              25
 
     float PI8=M_PI/8/2; //pi/8/2
     float PI38= 3*PI8; //3pi/8/2
@@ -288,6 +311,11 @@ void World::setInputs()
                 }
             }
         }
+
+		//temperature varies from 0 to 1 across screen.
+        //it is 0 at equator (in middle), and 1 on edges. Agents can sense discomfort
+        float dd= 2.0*abs(a->pos.x/conf::WIDTH - 0.5);
+        float discomfort= abs(dd - a->temperature_preference);
         
         smaccum *= a->smellmod;
         soaccum *= a->soundmod;
@@ -315,25 +343,27 @@ void World::setInputs()
         a->in[18]= cap(hearaccum);
         a->in[19]= cap(blood);
         
-        //temperature varies from 0 to 1 across screen.
-        //it is 0 at equator (in middle), and 1 on edges. Agents can sense discomfort
-        float dd= 2.0*abs(a->pos.x/conf::WIDTH - 0.5);
-        float discomfort= abs(dd - a->temperature_preference);
         a->in[20]= discomfort;
         
         a->in[21]= cap(p[3]);
         a->in[22]= cap(r[3]);
         a->in[23]= cap(g[3]);
         a->in[24]= cap(b[3]);
-                
+
+		if (a->selectflag) {
+			a->in[25]= cap(pinput1);
+		} else {
+			a->in[25]= 0;
+		}
     }
+//	#pragma omp barrier //testing (GPA)
 }
 
 void World::processOutputs()
 {
     //assign meaning
-    //LEFT RIGHT R G B SPIKE BOOST SOUND_MULTIPLIER GIVING
-    // 0    1    2 3 4   5     6         7             8
+    //LEFT RIGHT R G B SPIKE BOOST SOUND_MULTIPLIER GIVING CHOICE
+    // 0    1    2 3 4   5     6         7             8	  9
     for (int i=0;i<agents.size();i++) {
         Agent* a= &agents[i];
 
@@ -410,10 +440,7 @@ void World::processOutputs()
         }
     }
 
-    //process giving and receiving of food
-    for (int i=0;i<agents.size();i++) {
-        agents[i].dfood=0;
-    }
+	//process giving and receiving of food
     for (int i=0;i<agents.size();i++) {
         if (agents[i].give>0.5) {
             for (int j=0;j<agents.size();j++) {
@@ -483,6 +510,7 @@ void World::brainsTick()
     for (int i=0;i<agents.size();i++) {
         agents[i].tick();
     }
+//    #pragma omp barrier //testing (GPA)
 }
 
 void World::addRandomBots(int num)
@@ -496,29 +524,35 @@ void World::addRandomBots(int num)
 }
 
 void World::positionOfInterest(int type, float &xi, float &yi) {
+	int maxi= -1;
     if(type==1){
         //the interest of type 1 is the oldest agent
         int maxage=-1;
-        int maxi=-1;
         for(int i=0;i<agents.size();i++){
-           if(agents[i].age>maxage) { maxage = agents[i].age; maxi=i; }
-        }
-        if(maxi!=-1) {
-            xi = agents[maxi].pos.x;
-            yi = agents[maxi].pos.y;
+           if(agents[i].age>maxage) { 
+			   maxage = agents[i].age; 
+			   maxi=i;
+		   }
         }
     } else if(type==2){
         //interest of type 2 is the selected agent
-        int maxi=-1;
         for(int i=0;i<agents.size();i++){
            if(agents[i].selectflag==1) {maxi=i; break; }
         }
-        if(maxi!=-1) {
-            xi = agents[maxi].pos.x;
-            yi = agents[maxi].pos.y;
+	} else if(type==3){
+		//interest of type 3 is most advanced generation
+		int maxgen=-1;
+        for(int i=0;i<agents.size();i++){
+           if(agents[i].gencount>maxgen) { 
+			   maxgen = agents[i].gencount; 
+			   maxi=i;
+		   }
         }
+	}
+    if(maxi!=-1) {
+        xi = agents[maxi].pos.x;
+        yi = agents[maxi].pos.y;
     }
-    
 }
 
 void World::addCarnivore()

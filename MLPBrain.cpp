@@ -81,47 +81,55 @@ void MLPBrain::init()
 void MLPBrain::tick(vector< float >& in, vector< float >& out)
 {
     //do a single tick of the brain
-
-    //take first few boxes and set their out to in[].
-    for (int i=0;i<INPUTSIZE;i++) {
-        boxes[i].out= in[i];
-    }
-
-    //then do a dynamics tick and set all targets
-    for (int i=INPUTSIZE;i<BRAINSIZE;i++) {
+    for (int i=0;i<BRAINSIZE;i++) {
         MLPBox* abox= &boxes[i];
         
-        float acc=0;
-        for (int j=0;j<CONNS;j++) {
-            int idx=abox->id[j];
-            int type = abox->type[j];
-            float val= boxes[idx].out;
-            
-            if(type==1){
-                val-= boxes[idx].oldout;
-                val*=10;
-            }
-            
-            acc= acc + val*abox->w[j];
-        }
-        acc*= abox->gw;
-        acc+= abox->bias;
-        
-        //put through sigmoid
-        acc= 1.0/(1.0+exp(-acc));
-        
-        abox->target= acc;
+		if (i<INPUTSIZE) { //take first few boxes and set their out to in[]. (no need to do these separately, since thay are first)
+            boxes[i].out= in[i];
+		} else { //then do a dynamics tick and set all targets
+			float acc=0;
+			for (int j=0;j<CONNS;j++) {
+				int idx=abox->id[j];
+				int type = abox->type[j];
+				float val= boxes[idx].out;
+	            
+				if(type==1){
+					val-= boxes[idx].oldout;
+					val*=10;
+				}
+
+				if (j==CONNS-1) abox->w[j]= 2*out[9];//last connection is affected by to the 10th output, choice
+	            
+				acc= acc + val*abox->w[j];
+
+				if (val>0.6 && randf(0,1)<0.01) { // experimental weight feedback adjusting, both positive and negative
+					abox->w[j]+= 0.0001;
+					if (abox->w[j]>100) abox->w[j]= 100;
+				} else if (val<=0.3 && randf(0,1)<0.01) {
+					abox->w[j]-= 0.0001;
+				}
+				if (abox->w[j]<0) abox->w[j]= 0;
+
+			}
+			acc*= abox->gw;
+			acc+= abox->bias;
+	        
+			//put through sigmoid
+			acc= 1.0/(1.0+exp(-acc));
+	        
+			abox->target= acc;
+		}
     }
     
-    //back up current out for each box
-    for (int i=0;i<BRAINSIZE;i++){
-        boxes[i].oldout = boxes[i].out;
-    }
 
-    //make all boxes go a bit toward target
-    for (int i=INPUTSIZE;i<BRAINSIZE;i++) {
+    for (int i=0;i<BRAINSIZE;i++) {
         MLPBox* abox= &boxes[i];
-        abox->out =abox->out + (abox->target-abox->out)*abox->kp;
+
+		//back up current out for each box
+		abox->oldout = abox->out;
+
+		//make all boxes go a bit toward target
+        if (i>=INPUTSIZE) abox->out =abox->out + (abox->target-abox->out)*abox->kp;
     }
 
     //finally set out[] to the last few boxes output
@@ -143,7 +151,7 @@ void MLPBrain::mutate(float MR, float MR2)
 				boxes[j].type= boxes[k].type;
 				boxes[j].w= boxes[k].w;
 //				a2.mutations.push_back("box coppied\n");
-				break; //cancel all other mutations for box j
+				break; //cancel all further mutations to this brain
 			}
 		}
 
@@ -165,7 +173,7 @@ void MLPBrain::mutate(float MR, float MR2)
 //             a2.mutations.push_back("global weight jiggled\n");
         }
 
-        if (randf(0,1)<MR) {
+        if (randf(0,1)<MR*5) {
             int rc= randi(0, CONNS);
             boxes[j].w[rc]+= randn(0, MR2);
 //          a2.mutations.push_back("weight jiggled\n");
@@ -175,6 +183,7 @@ void MLPBrain::mutate(float MR, float MR2)
             int rc= randi(0, CONNS);
             boxes[j].type[rc] = 1 - boxes[j].type[rc]; //flip type of synapse
 //          a2.mutations.push_back("synapse switched\n");
+			break; //cancel all further mutations to this brain
         }
 
         //more unlikely changes here
@@ -182,7 +191,8 @@ void MLPBrain::mutate(float MR, float MR2)
             int rc= randi(0, CONNS);
             int ri= randi(0,BRAINSIZE);
             boxes[j].id[rc]= ri;
-//             a2.mutations.push_back("connectivity changed\n");
+//          a2.mutations.push_back("connectivity changed\n");
+			break; //cancel all further mutations to this brain
         }
     }
 }

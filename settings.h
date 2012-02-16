@@ -1,7 +1,7 @@
-#define INPUTSIZE 25
-#define OUTPUTSIZE 9
+#define INPUTSIZE 26
+#define OUTPUTSIZE 10
 #define NUMEYES 4
-#define BRAINSIZE 125
+#define BRAINSIZE 75
 #define CONNS 5
 
 #ifndef SETTINGS_H
@@ -9,13 +9,14 @@
 
 namespace conf {
     
-    const int WIDTH = 12000;  //width and height of simulation
-    const int HEIGHT = 9000;
+    const int WIDTH = 8000;  //width and height of simulation
+    const int HEIGHT = 6000;
     const int WWIDTH = 1300;  //window width and height
     const int WHEIGHT = 700;
     
     const int CZ = 50; //cell size in pixels, for food squares. Should divide well into Width Height
-	const int MINFOOD = 1000; //minimum number of cells which must have 50% food or more
+	const int MINFOOD = 0; //Minimum number of food cells which must have food durring simulation. 0 = off
+	const int INITFOOD = 500; //initial number of full food cells
 
 	const int   REPORTS_PER_EPOCH = 10; // number of times to record data per epoch. 0 for off. (David Coleman)
     
@@ -26,7 +27,7 @@ namespace conf {
     const float SPIKEMULT= 1; //essentially the strength of every spike impact
     const int BABIES=2; //number of babies per agent when they reproduce
     const float BOOSTSIZEMULT=2; //how much boost do agents get? when boost neuron is on
-	const float MINREPRATE=5; //absolute lowest limit for reprate
+	const float MINREPRATE=3; //absolute lowest limit for reprate
 	const int MAXAGE=1000; //Age at which the full AGEDAMAGE amount is given to an agent
 	const int AGEDAMAGE=0.0005;
 
@@ -35,14 +36,16 @@ namespace conf {
     const float METAMUTRATE2= 0.05;
 
     const float FOODINTAKE= 0.002; //how much does every agent consume?
-    const float FOODWASTE= 0.001; //how much food disapears if agent eats?
+	const float FOODGROWTH= -0.000001; //how much does food grow/decay on a square?
+    const float FOODWASTE= 0.0002; //how much food disapears if agent eats?
     const float FOODMAX= 0.5; //how much food per cell can there be at max?
-    const int FOODADDFREQ= 15; //how often does random square get to full food?
+    const int FOODADDFREQ= 160; //how often does random square get to full food?
+	const float FOODSPREAD= 0.00001; //probability of a food cell spreading food to a nearby cell per tick
 
     const float FOODTRANSFER= 0.001; //how much is transfered between two agents trading food? per iteration
     const float FOOD_SHARING_DISTANCE= 50; //how far away is food shared between bots?
     
-    const float TEMPERATURE_DISCOMFORT = 0; //how quickly does health drain in nonpreferred temperatures (0= disabled. 0.005 is decent value)
+    const float TEMPERATURE_DISCOMFORT = 0.002; //how quickly does health drain in nonpreferred temperatures (0= disabled. 0.005 is decent value)
 
     const float FOOD_DISTRIBUTION_RADIUS=100; //when bot is killed, how far is its body distributed?
     

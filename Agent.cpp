@@ -33,7 +33,7 @@ Agent::Agent()
     ir=0;
     ig=0;
     ib=0;
-    temperature_preference=randf(0,1);
+	temperature_preference= cap(randn(2.0*abs(pos.y/conf::HEIGHT - 0.5),0.05));
     hybrid= false;
     herbivore= randf(0,1);
 	reprate= randf(conf::MINREPRATE,30); //(GPA) 30 is the slowest spawnable rep rate, MINREPRATE is fastest
@@ -116,17 +116,12 @@ Agent Agent::reproduce(float MR, float MR2)
     if (a2.clockf1<2) a2.clockf1= 2;
     if (randf(0,1)<MR*5) a2.clockf2= randn(this->clockf2, MR2);
     if (a2.clockf2<2) a2.clockf2= 2;
-    
-    a2.smellmod = this->smellmod;
-    a2.soundmod = this->soundmod;
-    a2.hearmod = this->hearmod;
-    a2.eyesensmod = this->eyesensmod;
-    a2.bloodmod = this->bloodmod;
-    if(randf(0,1)<MR*5) {float oo = a2.smellmod; a2.smellmod = randn(a2.smellmod, MR2); if(BDEBUG) printf("smell mutated from %f to %f\n", oo, a2.smellmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.soundmod; a2.soundmod = randn(a2.soundmod, MR2); if(BDEBUG) printf("sound mutated from %f to %f\n", oo, a2.soundmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.hearmod; a2.hearmod = randn(a2.hearmod, MR2); if(BDEBUG) printf("hear mutated from %f to %f\n", oo, a2.hearmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.eyesensmod; a2.eyesensmod = randn(a2.eyesensmod, MR2); if(BDEBUG) printf("eyesens mutated from %f to %f\n", oo, a2.eyesensmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.bloodmod; a2.bloodmod = randn(a2.bloodmod, MR2); if(BDEBUG) printf("blood mutated from %f to %f\n", oo, a2.bloodmod);}
+
+    if(randf(0,1)<MR*5) {float oo = a2.smellmod; a2.smellmod = randn(this->smellmod, MR2); if(BDEBUG) printf("smell mutated from %f to %f\n", oo, a2.smellmod);}
+    if(randf(0,1)<MR*5) {float oo = a2.soundmod; a2.soundmod = randn(this->soundmod, MR2); if(BDEBUG) printf("sound mutated from %f to %f\n", oo, a2.soundmod);}
+    if(randf(0,1)<MR*5) {float oo = a2.hearmod; a2.hearmod = randn(this->hearmod, MR2); if(BDEBUG) printf("hear mutated from %f to %f\n", oo, a2.hearmod);}
+    if(randf(0,1)<MR*5) {float oo = a2.eyesensmod; a2.eyesensmod = randn(this->eyesensmod, MR2); if(BDEBUG) printf("eyesens mutated from %f to %f\n", oo, a2.eyesensmod);}
+    if(randf(0,1)<MR*5) {float oo = a2.bloodmod; a2.bloodmod = randn(this->bloodmod, MR2); if(BDEBUG) printf("blood mutated from %f to %f\n", oo, a2.bloodmod);}
     
     a2.eyefov = this->eyefov;
     a2.eyedir = this->eyedir;
@@ -140,7 +135,6 @@ Agent Agent::reproduce(float MR, float MR2)
     }
     
     a2.temperature_preference= cap(randn(this->temperature_preference, 0.005));
-//    a2.temperature_preference= this->temperature_preference;
     
     //mutate brain here
     a2.brain= this->brain;
