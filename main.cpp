@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 	glutMotionFunc(gl_processMouseActiveMotion);
 	glutPassiveMotionFunc(gl_processMousePassiveMotion);
 
-	glutCreateMenu(gl_menu); //(GPA)
+	glutCreateMenu(gl_menu); //right-click context menu
 	glutAddMenuEntry("Fast Mode", 'm');
 	glutAddMenuEntry("Pause", 'p');
 	glutAddMenuEntry("Toggle Closed World", 'c');
@@ -55,11 +55,11 @@ int main(int argc, char **argv) {
 	glutAddMenuEntry("New Agent (H)", 'h');
 	glutAddMenuEntry("New Agent (C)", 'n');
 	glutAddMenuEntry("Delete Agent", 127);
-//	glutAddMenuEntry("Save World",200);
-//	glutAddMenuEntry("Load World",201);
+	glutAddMenuEntry("Save World",2000);
+	glutAddMenuEntry("Load World",2001);
 	glutAddMenuEntry("-------------------",-1);
-	glutAddMenuEntry("Exit", 27);
 	glutAddMenuEntry("Reset Agents", 9);
+	glutAddMenuEntry("Exit", 27);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     glutMainLoop();

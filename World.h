@@ -35,7 +35,7 @@ public:
     void processMouse(int button, int state, int x, int y);
 
     void addNewByCrossover();
-    void addRandomBots(int num);
+    void addRandomBots(int num, int type=0);
     void addCarnivore();
     void addHerbivore();
     
@@ -47,6 +47,9 @@ public:
 
 	int deleting;
 	int pinput1;
+
+	void save(const char *filename);
+	void load(const char *filename);
     
 private:
     void setInputs();

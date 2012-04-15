@@ -14,8 +14,7 @@ class Agent
 
 public:
     Agent();
-    
-    
+
     void printSelf();
      //for drawing purposes
     void initEvent(float size, float r, float g, float b);
@@ -47,6 +46,7 @@ public:
 
 	float reprate;
     float repcounter; //when repcounter gets to 0, this bot reproduces
+	float metabolism; //rate modifier for food to repcounter conversion
     int gencount; //generation counter
     bool hybrid; //is this agent result of crossover?
     float clockf1, clockf2; //the frequencies of the two clocks of this bot
@@ -84,6 +84,10 @@ public:
     //will store the mutations that this agent has from its parent
     //can be used to tune the mutation rate
     std::vector<std::string> mutations;
+
+	//save bot. Obvious use, primary function in saveWORLD function
+	void saveAgent(FILE *fs);
+	void loadAgent(FILE *fl);
 };
 
 #endif // AGENT_H

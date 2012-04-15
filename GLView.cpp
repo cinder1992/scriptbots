@@ -168,14 +168,14 @@ void GLView::menu(int key) //(GPA)
     } else if (key=='f') {
         drawfood=!drawfood;
     } else if (key=='b') {
-        for (int i=0;i<10;i++){world->addNewByCrossover();}
+        for (int i=0;i<5;i++){world->addNewByCrossover();}
     } else if (key=='n') {
-        for (int i=0;i<10;i++){world->addCarnivore();}
+        world->addRandomBots(5, 2);
     } else if (key=='h') {
-        for (int i=0;i<10;i++){world->addHerbivore();}
+        world->addRandomBots(5, 1);
     } else if (key=='c') {
         world->setClosed( !world->isClosed() );
-        printf("Environment closed now= %s\n",(world->isClosed() ? "true" : "false" )); //(Anaal Nathrakh)
+        printf("Environment closed now= %s\n",(world->isClosed() ? "true" : "false" ));
     } else if (key=='l') {
         if(following==0) following= 2;
         else following= 0;
@@ -194,6 +194,16 @@ void GLView::menu(int key) //(GPA)
 		scalemult -= 0.012;
 	}else if (key==32) { //spacebar
 		world->pinput1+= 20;
+	}else if (key==2000) { //menu only, save world
+		printf("Type a valid file name (ex: WORLD.SCB): ");
+		scanf("%s", filename);
+		world->save(filename);
+	}else if (key==2001) { //menu only, load world
+		printf("Type a valid file name (ex: WORLD.SCB): ");
+		scanf("%s", filename);
+		//reset first
+		world->reset();
+		world->load(filename);
     } else {
         printf("Unknown key pressed: %i\n", key);
     }
@@ -251,11 +261,13 @@ void GLView::renderScene()
         float xi=0, yi=0;
         world->positionOfInterest(following, xi, yi);
 
-		xtranslate= -xi; ytranslate= -yi;
+		if(xi!=0 && yi!=0){
+			xtranslate= -xi; ytranslate= -yi;
+		}
         
       
         //reset this if there is no interest. Probably agent that was followed died
-        if(xi==0 && yi==0) following = 0;
+        //if(xi==0 && yi==0) following = 0;
     }
 	glTranslatef(xtranslate, ytranslate, 0.0f);
     
@@ -475,11 +487,11 @@ void GLView::drawAgent(const Agent& agent)
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+34,0);
 
 		//draw temp discomfort indicator
-		//calculate temperature at the agents spot. (based on distance from horizontal equator)
+		//calculate temperature at the agents spot. (based on distance from horizontal equator) Orange is bad, white is good
 		float dd= 2.0*abs(agent.pos.y/conf::HEIGHT - 0.5);
         float discomfort= cap(sqrt(abs(dd-agent.temperature_preference)));
         if (discomfort<0.08) discomfort=0;
-		glColor3f(1,(2-discomfort)/2,(1-discomfort));
+		glColor3f(1,pow(2-discomfort,2)/4,(1-discomfort));
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+36,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+36,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+46,0);
@@ -505,8 +517,9 @@ void GLView::drawAgent(const Agent& agent)
 		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
 
 		//repcounter
+		float dr = agent.metabolism/4;
 		sprintf(buf2, "%.2f", agent.repcounter);
-		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
+		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, dr/2+0.5, dr/2+0.5, (1.0-dr)/2+0.5);
 	}
 }
 
@@ -537,7 +550,7 @@ void GLView::drawMisc()
     RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed", 0.0f, 0.0f, 0.0f);
     RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest, g to follow most advanced gen", 0.0f, 0.0f, 0.0f);
 	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 0.0f, 0.0f, 0.0f);
-	if(following!=0) RenderString(3500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.0f, 0.0f, 0.0f);
+//	if(following!=0) RenderString(-xtranslate+(10-conf::WWIDTH/2)/scalemult, -ytranslate+(30-conf::WHEIGHT/2)/scalemult, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.5f, 0.5f, 0.5f);
 	if(world->isClosed()) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "CLOSED WORLD", 0.0f, 0.0f, 0.0f);
 }
 

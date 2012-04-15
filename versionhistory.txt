@@ -1,0 +1,66 @@
+4/15/12 changes
++ Physics collision correction incorperated
++ Added metabolism agent variable, effects rate of food to repcounter, and meat to repcounter. Range: 0 -> 4
++ Added basic world save function
++ Added basic world load function
++ Last OUTPUTSIZE boxes are no longer forced to have connections with zero weights
++ Increased chance of change-sensitive conns (5% -> 10%)
++ Food spread now has a range of three cells (not yet adjustable via settings.h)
+- Removed eye proximity inputs, merged with the colors
+= Changes to mutation chances
+= Changes to MLP Brain inner workings and variable ranges
+= Fixed follow selected agent feature so that death of selected agent does not result in snaping to origin
+= Adjusted world reset to better work with loading saved worlds.
+= Further adjustment to food constants
+
+2/15/12 changes
++ added spacebar input to bots, makes interesting yet unlikely useful behaviour changes
++ New brain output: Choice. Replaces the weight of the last connection of each box with a value in the range 0-2 based on this output. It is hoped 
+  that this will lead to more complex behaviours than ever before.
++ added "follow highest generation" function, follows bot with highest gen count. NOTE: this and "follow oldest" follow the same bot in the most 
+  random batches of agents.
++ food spread introduced
++ food sharing indicator changed to temperature discomfort indicator: more orange means more health being lost
+= Temperature preference now more likely to match the location where a random agent is placed, to help start populations
+= experimentation with a recursive weight system, where when a conn's val is above 0.6, its weight is increased. Conversely, when it's below 0.3, its
+  weight is decreased, by about 0.000001 both ways
+= balancing adjustments to plant food
+= optimizing of code and agent loops; mostly just experimentation. 
+
+1/13/12 changes
++ added MINFOOD constant; number of food cells with 50% MAXFOOD will never fall below this number.
++ added speed (skipdraw) report to window title
++ added new type of mutation: box copy. All attributes are copied from one box to another.
++ added David Coleman's code for hiding stats when zoomed out and custom epoch report frequency, added Anaal Nathrakh's code for closed state reporting, 
+= changed/added display of total population on graph by using the cursor-line. Added a numerical display also. Shows possible change in population as well.
+= Fixed follow agent and follow oldest so that the screen stays at its location when either is toggled off (no nasty jumping back to previous location)
+= Fixed selecting of agents while following. Now you can select the oldest agent while following him, or select others of interest nearby!
+= Fixed bugs with reporting (not clearing the file on reload, incorrect values to some fields) 
+
+1/3/12 (GhengopelALPHA) changes
+- changed process keys to allow right-click context menu. Added scroll for mouse movement near window edge. Removed right-click-move scroll ability (interference with context menu)
++ Added "delete" function: press the delete key when a bot is selected and it will be removed.
+- Changed color scheme (don't like the white and gray background)
+- Fixed agent selection to get correct world x&y when following
++ Added new reprate variable for bots, and is the number repcounter is reset to, with the fastest possible reprate defined by MINREPRATE. Is inherited.
+
+1/1/2012 changes
+- made many more variables per agent customizable and inheritable (such as eye sensitivity etc)
+- added two more keys: 's' follows the selected agent around. 'o' follows the oldest agent around.
+- number of carnivores and herbivores are now visualized on top of the world
+- added a new type of brain: assembly brain, but it needs much more work. i.e. don't use
+
+v1.3
+- Fixed compilation issues on Linux
+- Ported to CMake build system
+
+v1.2 changes (released 19 January 2011):
+
+- New Brain: DWRAON (Damped Weighted Recurrent AND/OR Network). This is better due to more continuous behavior than the old, discrete, rule based system.
+- No dichotomy of herbivore/carnivore. There is a stomach specialization variable between 0,1. At 0, specialized to process plants, at 1, meat. This trait is inherited and undergoes mutation. This also supports emergence of omnivores, which can process both, to a lesser degree.
+- Meat food is now only allocated when a creature dies, as opposed to when it is injured. It is distributed evenly to all nearby creatures when the kill occurs. This leads more clearly to emergence of hunting packs.
+- Ability to judge health of an organism in front was added. I think of it something as a blood sensor. Essentially, it fires if something wounded is ahead. This can make agents become selective when hunting.
+- More sensors were added: Two clock neurons that have time-varying activity at a some frequency that can be inherited. This is useful for introducing base activity into the brain, and also for giving agents a simple way to keep track of time, and do something at regular intervals. 
+- Also, a hearing sensor was added that directly simulates sound. Agents can now shout at each other, but probably lack the capacity to temporally parse a shouting stream and create anything that resembles a non-trivial language.
+- Sound generator actuator was added, which simulates creating sound and corresponds to shouting.
+- Ability to share food was added. An agent can choose to give up its food to organisms around it. This potentially enables emergence of altruism: When a bot is too high in health, it may sense that there is one of its kind ahead that needs food, and choose to give it up.

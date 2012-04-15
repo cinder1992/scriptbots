@@ -36,8 +36,9 @@ Agent::Agent()
 	temperature_preference= cap(randn(2.0*abs(pos.y/conf::HEIGHT - 0.5),0.05));
     hybrid= false;
     herbivore= randf(0,1);
-	reprate= randf(conf::MINREPRATE,30); //(GPA) 30 is the slowest spawnable rep rate, MINREPRATE is fastest
+	reprate= randf(conf::MINREPRATE,15); //15 is the slowest spawnable rep rate, MINREPRATE is fastest
     repcounter= reprate;
+	metabolism= randf(0.1,4);
 
     id=0;
     
@@ -47,8 +48,8 @@ Agent::Agent()
     eyesensmod= randf(1, 3);
     bloodmod= randf(1, 3);
     
-    MUTRATE1= randf(0.001, 0.005);
-    MUTRATE2= randf(0.03, 0.07);
+    MUTRATE1= 0.005; //randf(0.001, 0.005);
+    MUTRATE2= 0.05; //randf(0.03, 0.07);
 
     spiked= false;
     
@@ -103,18 +104,19 @@ Agent Agent::reproduce(float MR, float MR2)
 	a2.reprate= randn(this->reprate, MR2*2);
 	if (a2.reprate<conf::MINREPRATE) a2.reprate= conf::MINREPRATE;
     a2.repcounter= a2.reprate;
+	a2.metabolism= randn(this->metabolism, MR2);
+	if (a2.metabolism<0.1) a2.metabolism= 0.1;
+	if (a2.metabolism>4) a2.metabolism= 4;
 
     //noisy attribute passing
-    a2.MUTRATE1= this->MUTRATE1;
-    a2.MUTRATE2= this->MUTRATE2;
     if (randf(0,1)<0.1) a2.MUTRATE1= randn(this->MUTRATE1, conf::METAMUTRATE1);
     if (randf(0,1)<0.1) a2.MUTRATE2= randn(this->MUTRATE2, conf::METAMUTRATE2);
     if (this->MUTRATE1<0.001) this->MUTRATE1= 0.001;
     if (this->MUTRATE2<0.02) this->MUTRATE2= 0.02;
     a2.herbivore= cap(randn(this->herbivore, 0.03));
-    if (randf(0,1)<MR*5) a2.clockf1= randn(this->clockf1, MR2);
+    if (randf(0,1)<MR*5) a2.clockf1= randn(this->clockf1, MR2/2);
     if (a2.clockf1<2) a2.clockf1= 2;
-    if (randf(0,1)<MR*5) a2.clockf2= randn(this->clockf2, MR2);
+    if (randf(0,1)<MR*5) a2.clockf2= randn(this->clockf2, MR2/2);
     if (a2.clockf2<2) a2.clockf2= 2;
 
     if(randf(0,1)<MR*5) {float oo = a2.smellmod; a2.smellmod = randn(this->smellmod, MR2); if(BDEBUG) printf("smell mutated from %f to %f\n", oo, a2.smellmod);}
@@ -134,7 +136,7 @@ Agent Agent::reproduce(float MR, float MR2)
         if(a2.eyedir[i]>2*M_PI) a2.eyedir[i] = 2*M_PI;
     }
     
-    a2.temperature_preference= cap(randn(this->temperature_preference, 0.005));
+    a2.temperature_preference= cap(randn(this->temperature_preference, MR2));
     
     //mutate brain here
     a2.brain= this->brain;
@@ -174,4 +176,74 @@ Agent Agent::crossover(const Agent& other)
     anew.brain= this->brain.crossover(other.brain);
     
     return anew;
+}
+
+void Agent::saveAgent(FILE *fs)
+{
+	//open savefile and dump data inside
+	int hybridtemp= 0;
+	int boosttemp= 0;
+	if(this->hybrid) hybridtemp= 1;
+	if(this->boost) boosttemp= 1;
+	fprintf(fs, "<agent>\n"); //signals the creation of a new agent...
+//	fprintf(fs, "id= %i\n", this->id); //id... (not loaded)
+	fprintf(fs, "posx= %f\nposy= %f\n", this->pos.x, this->pos.y); //position...
+	fprintf(fs, "angle= %f\n", this->angle); //angle...
+	fprintf(fs, "health= %f\n", this->health);
+//	fprintf(fs, "red= %f\ngre= %f\nblu= %f\n", this->red, this->gre, this->blu);
+//	fprintf(fs, "w1= %f\nw2= %f\n", w1, w2);
+//	fprintf(fs, "boost= %i\n", boosttemp);
+	fprintf(fs, "herbivore= %f\n", this->herbivore);
+	fprintf(fs, "spike= %f\n", this->spikeLength);
+	fprintf(fs, "dfood= %f\n", this->dfood);
+	fprintf(fs, "age= %i\n", this->age);
+	fprintf(fs, "gen= %i\n", this->gencount);
+	fprintf(fs, "hybrid= %i\n", hybridtemp);
+	fprintf(fs, "cl1= %f\ncl2= %f\n", this->clockf1, this->clockf2);
+	fprintf(fs, "smellmod= %f\n", this->smellmod);
+	fprintf(fs, "soundmod= %f\n", this->soundmod);
+	fprintf(fs, "hearmod= %f\n", this->hearmod);
+	fprintf(fs, "bloodmod= %f\n", this->bloodmod);
+	fprintf(fs, "eyesensemod= %f\n", this->eyesensmod);
+	for(int q=0;q<NUMEYES;q++) {
+		fprintf(fs, "<eye>\n");
+		fprintf(fs, "eye#= %i\n", q);
+		fprintf(fs, "eyedir= %f\n", this->eyedir[q]);
+		fprintf(fs, "eyefov= %f\n", this->eyefov[q]);
+		fprintf(fs, "</eye>\n");
+	}
+	fprintf(fs, "metabolism= %f\n", this->metabolism);
+	fprintf(fs, "reprate= %f\n", this->reprate);
+	fprintf(fs, "repcounter= %f\n", this->repcounter);
+	fprintf(fs, "reprate= %f\n", this->reprate);
+	fprintf(fs, "killed= %i\n", (int) this->spiked);
+	fprintf(fs, "temppref= %f\n", this->temperature_preference);
+//	fprintf(fs, "indicator= %f\n", this->indicator);
+//	fprintf(fs, "ir= %f\nig= %f\nib= %f\n", this->ir, this->ig, this->ib);
+//	fprintf(fs, "give= %f\n", this->give);
+	fprintf(fs, "mutrate1= %f\nmutrate2= %f\n", this->MUTRATE1, this->MUTRATE2);
+	fprintf(fs, "<brain>\n"); //signals the creation and loading of the brain
+
+	for(int b=0;b<BRAINSIZE;b++){
+		fprintf(fs, "<box>\n"); //signals the loading of a specific numbered box
+		fprintf(fs, "box#= %i\n", b);
+		fprintf(fs, "kp= %f\n", this->brain.boxes[b].kp);
+		fprintf(fs, "bias= %f\n", this->brain.boxes[b].bias);
+		fprintf(fs, "globalw= %f\n", this->brain.boxes[b].gw);
+		fprintf(fs, "target= %f\n", this->brain.boxes[b].target);
+		fprintf(fs, "out= %f\n", this->brain.boxes[b].out);
+		fprintf(fs, "oldout= %f\n", this->brain.boxes[b].oldout);
+		for(int c=0;c<CONNS;c++){
+			fprintf(fs, "<conn>\n"); //signals the loading of a specific connection for a specific box
+			fprintf(fs, "conn#= %i\n", c);
+			fprintf(fs, "type= %i\n", this->brain.boxes[b].type[c]);
+			fprintf(fs, "w= %f\n", this->brain.boxes[b].w[c]);
+			fprintf(fs, "cid= %i\n", this->brain.boxes[b].id[c]);
+			fprintf(fs, "</conn>\n"); //end of connection
+		}
+		fprintf(fs, "</box>\n"); //end of box
+	}
+	fprintf(fs, "</brain>\n"); //end of brain
+	fprintf(fs, "</agent>\n"); //end of agent
+//	fclose(fs);
 }

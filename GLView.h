@@ -61,6 +61,7 @@ private:
     int mousex, mousey;
     
     int following;
+	char filename [30];
     
 };
 
