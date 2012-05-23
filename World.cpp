@@ -18,14 +18,10 @@ World::World() :
 
 	//add random food
 	while(numFood()<conf::INITFOOD) {
-		food[randi(0,FW)][randi(0,FH)] = conf::FOODMAX;
+		cells[0][randi(0,CW)][randi(0,CH)] = conf::FOODMAX;
 	}
-
+	
 	addRandomBots(conf::NUMBOTS, 1);
-    
-    numCarnivore.resize(200, 0);
-    numHerbivore.resize(200, 0);
-    ptr=0;
 }
 
 void World::update()
@@ -48,6 +44,8 @@ void World::update()
         std::pair<int,int> num_herbs_carns = numHerbCarnivores();
         numHerbivore[ptr]= num_herbs_carns.first;
         numCarnivore[ptr]= num_herbs_carns.second;
+		numHybrid[ptr]= numHybrids();
+		numTotal[ptr]= numAgents();
         ptr++;
         if(ptr == numHerbivore.size()) ptr = 0;
 
@@ -59,30 +57,30 @@ void World::update()
         current_epoch++;
     }
 	if (modcounter%conf::FOODADDFREQ==0 || numFood()<conf::MINFOOD) {
-        fx=randi(0,FW);
-        fy=randi(0,FH);
-        food[fx][fy]= conf::FOODMAX;
+        cx=randi(0,CW);
+        cy=randi(0,CH);
+        cells[0][cx][cy]= conf::FOODMAX;
     }
 
-	for(int x=0;x<FW;x++){
-		for(int y=0;y<FH;y++){
-			if (food[x][y]>0) {
-				food[x][y]+= conf::FOODGROWTH; //food quantity is changed by FOODGROWTH
+	for(cx=0;cx<CW;cx++){
+		for(cy=0;cy<CH;cy++){
+			if (cells[0][cx][cy]>0) {
+				cells[0][cx][cy]+= conf::FOODGROWTH; //food quantity is changed by FOODGROWTH
 
-				if (randf(0,1)<conf::FOODSPREAD && food[x][y]>conf::FOODMAX/2) {
-					int ox= randi(x-1-2,x+2+2);
-					int oy= randi(y-1-2,y+2+2); //Range= 2
-					if (ox<1) ox= FW-1;
-					if (ox>FW-1) ox= 0;
-					if (oy<1) oy= FH-1;
-					if (oy>FH-1) oy= 0;
-					food[ox][oy]+= conf::FOODMAX/3;
-					if (food[ox][oy]>conf::FOODMAX) food[ox][oy]= conf::FOODMAX;
+				if (randf(0,1)<conf::FOODSPREAD && cells[0][cx][cy]>0) {
+					int ox= randi(cx-1-conf::FOODRANGE,cx+2+conf::FOODRANGE);
+					int oy= randi(cy-1-conf::FOODRANGE,cy+2+conf::FOODRANGE);
+					if (ox<1) ox= CW-1;
+					if (ox>CW-1) ox= 0;
+					if (oy<1) oy= CH-1;
+					if (oy>CH-1) oy= 0;
+					cells[0][ox][oy]+= conf::FOODMAX/3;
+					if (cells[0][ox][oy]>conf::FOODMAX) cells[0][ox][oy]= conf::FOODMAX;
 				}
 			}
 
-			if(food[x][y]>conf::FOODMAX) food[x][y]=conf::FOODMAX; //cap at FOODMAX
-			if(food[x][y]<0) food[x][y]= 0;
+			if(cells[0][cx][cy]>conf::FOODMAX) cells[0][cx][cy]=conf::FOODMAX; //cap at FOODMAX
+			if(cells[0][cx][cy]<0) cells[0][cx][cy]= 0;
 
 		}
 	}
@@ -101,8 +99,6 @@ void World::update()
     //give input to every agent. Sets in[] array
     setInputs();
 
-	pinput1= int(pinput1/2);
-
     //brains tick. computes in[] -> out[]
     brainsTick();
 
@@ -115,11 +111,14 @@ void World::update()
         float baseloss= 0;//.0001; // + 0.0001*(abs(agents[i].w1) + abs(agents[i].w2))/2;
         //if (agents[i].w1<0.1 && agents[i].w2<0.1) baseloss=0.0001; //hibernation :p
 
-		baseloss += agents[i].age/conf::MAXAGE*conf::AGEDAMAGE; //getting older reduces health. Age > MAXAGE = no health (GPA)
+		baseloss += agents[i].age/conf::MAXAGE*conf::AGEDAMAGE; //getting older reduces health.
 
 		if (agents[i].boost) { //if boosting, init baseloss + age loss is multiplied
             baseloss *= conf::BOOSTSIZEMULT;
 		}
+
+		//baseloss then gets multiplied by metabolism
+		baseloss *= agents[i].metabolism;
    
 		//process temperature preferences
         //calculate temperature at the agents spot. (based on distance from horizontal equator)
@@ -131,10 +130,25 @@ void World::update()
 		agents[i].health -= baseloss;
 
 		//handle reproduction
-        if (agents[i].repcounter<0 && agents[i].health>0.65 && modcounter%15==0 && randf(0,1)<0.1) { //agent is healthy and is ready to reproduce. Also inject a bit non-determinism
-            //agents[i].health= 0.8; //the agent is left vulnerable and weak, a bit
-            reproduce(i, agents[i].MUTRATE1, agents[i].MUTRATE2); //this adds conf::BABIES new agents to agents[]
-			agents[i].repcounter= agents[i].reprate;
+        if (agents[i].repcounter<0 && agents[i].health>0.65 && modcounter%15==0 && randf(0,1)<0.1) { 
+			//agent is healthy and is ready to reproduce. Also inject a bit non-determinism
+			for (int j=0;j<agents.size();j++) {
+				float d= (agents[i].pos-agents[j].pos).length();
+				if (d<conf::FOOD_DISTRIBUTION_RADIUS && agents[j].give>0.5 && i!=j){
+					//this adds conf::BABIES new agents to agents[], but with two parents
+					reproduce(i, j, agents[i].MUTRATE1, agents[i].MUTRATE2, agents[j].MUTRATE1, agents[j].MUTRATE2);
+					agents[i].health -= 0.3; //reduce health of birthing parent; not as much as assexual reproduction
+					agents[i].repcounter= conf::REPRATE;
+					agents[j].repcounter= conf::REPRATE;
+					break;
+				} else if (j==agents.size()-1 && agents[i].repcounter!=conf::REPRATE && randf(0,1)<0.1){
+					//this adds conf::BABIES new agents to agents[], with just one parent
+					reproduce(i, i, agents[i].MUTRATE1, agents[i].MUTRATE2, agents[i].MUTRATE1, agents[i].MUTRATE2);
+					agents[i].health -= 0.65; //reduce health of birthing parent
+					agents[i].repcounter= conf::REPRATE;
+					break;
+				}
+			}
         }
     }
 
@@ -169,10 +183,9 @@ void World::update()
                 for (int j=0;j<agents.size();j++) {
                     if (agents[j].herbivore < .5 && i!=j ) { //only carnivores get food. not same agent as dying
                         float d= (agents[i].pos-agents[j].pos).length();
-                        if (d<conf::FOOD_DISTRIBUTION_RADIUS) {
-                            agents[j].health += 5*(1-agents[j].herbivore)*(1-agents[j].herbivore)/pow(numaround,1.25)*agemult;
+						if (d<conf::FOOD_DISTRIBUTION_RADIUS && agents[j].health<2) {
+							agents[j].health += agents[j].metabolism*(1-agents[j].herbivore)*(1-agents[j].herbivore)/pow(numaround,1.25)*agemult;
                             agents[j].repcounter -= agents[j].metabolism*conf::REPMULT*(1-agents[j].herbivore)*(1-agents[j].herbivore)/pow(numaround,1.25)*agemult; //good job, can use spare parts to make copies
-                            if (agents[j].health>2) agents[j].health=2; //cap it!
                             agents[j].initEvent(30,1,1,1); //white means they ate! nice
                         }
                     }
@@ -229,9 +242,9 @@ void World::setInputs()
         a->in[11]= cap(a->health/2); //divide by 2 since health is in [0,2]
 
         //FOOD
-        int cx= (int) a->pos.x/conf::CZ;
-        int cy= (int) a->pos.y/conf::CZ;
-        a->in[3]= food[cx][cy]/conf::FOODMAX;
+        cx= (int) a->pos.x/conf::CZ;
+        cy= (int) a->pos.y/conf::CZ;
+        a->in[3]= cells[0][cx][cy]/conf::FOODMAX;
 
         //SOUND SMELL EYES
 //        vector<float> p(NUMEYES,0);
@@ -335,7 +348,7 @@ void World::setInputs()
         a->in[20]= cap(blood);
         
         if (a->selectflag) {
-			a->in[21]= cap(pinput1);
+			a->in[21]= pinput1;
 		} else {
 			a->in[21]= 0;
 		}
@@ -368,7 +381,7 @@ void World::processOutputs()
     }
 
     //move bots
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for (int i=0;i<agents.size();i++) {
         Agent* a= &agents[i];
 
@@ -409,28 +422,29 @@ void World::processOutputs()
     //process food intake for herbivors
     for (int i=0;i<agents.size();i++) {
 
-        int cx= (int) agents[i].pos.x/conf::CZ;
-        int cy= (int) agents[i].pos.y/conf::CZ;
-        float f= food[cx][cy];
-        if (f>0 && agents[i].health<2) {
+        cx= (int) agents[i].pos.x/conf::CZ;
+        cy= (int) agents[i].pos.y/conf::CZ;
+        float food= cells[0][cx][cy];
+        if (food>0 && agents[i].health<2) {
             //agent eats the food
-            float itk=min(f,conf::FOODINTAKE);
+            float itk=min(food,conf::FOODINTAKE);
             float speedmul= (1-(abs(agents[i].w1)+abs(agents[i].w2))/2)*0.7 + 0.3;
             itk= itk*agents[i].herbivore*speedmul; //herbivores gain more from ground food
-            agents[i].health+= itk;
+			agents[i].health+= agents[i].metabolism*itk;
             agents[i].repcounter -= agents[i].metabolism*itk;
-            food[cx][cy]-= min(f,conf::FOODWASTE*agents[i].metabolism);
+            cells[0][cx][cy]-= min(food,conf::FOODWASTE);
         }
     }
 
 	//process giving and receiving of food
+	#pragma omp parallel for
     for (int i=0;i<agents.size();i++) {
         if (agents[i].give>0.5) {
             for (int j=0;j<agents.size();j++) {
                 float d= (agents[i].pos-agents[j].pos).length();
-                if (d<conf::FOOD_SHARING_DISTANCE) {
+                if (d<conf::FOOD_SHARING_DISTANCE && agents[j].health<2) {
                     //initiate transfer
-                    if (agents[j].health<2) agents[j].health += conf::FOODTRANSFER;
+                    agents[j].health += conf::FOODTRANSFER;
                     agents[i].health -= conf::FOODTRANSFER;
                     agents[j].dfood += conf::FOODTRANSFER; //only for drawing
                     agents[i].dfood -= conf::FOODTRANSFER;
@@ -441,6 +455,7 @@ void World::processOutputs()
 
     //process spike dynamics for carnivors
     if (modcounter%2==0) { //we dont need to do this TOO often. can save efficiency here since this is n^2 op in #agents
+		#pragma omp parallel for
         for (int i=0;i<agents.size();i++) {
 			Agent* a= &agents[i];
 
@@ -485,8 +500,6 @@ void World::processOutputs()
                     float diff= v.angle_between(a2->pos-a->pos);
                     if (fabs(diff)<M_PI/8) {
                         //bot i is also properly aligned!!! that's a hit
-                        float mult=1;
-                        if (a->boost) mult= conf::BOOSTSIZEMULT;
                         float DMG= conf::SPIKEMULT*a->spikeLength*max(fabs(a->w1),fabs(a->w2))*conf::BOOSTSIZEMULT;
 
                         a2->health-= DMG;
@@ -494,7 +507,7 @@ void World::processOutputs()
                         if (a->health>2) a->health=2; //cap health at 2
                         a->spikeLength= 0; //retract spike back down
 
-                        a->initEvent(40*DMG,1,1,0); //yellow event means bot has spiked other bot. nice!
+                        a->initEvent(20*DMG,1,1,0); //yellow event means bot has spiked other bot. nice!
 
                         Vector2f v2(1,0);
                         v2.rotate(a2->angle);
@@ -583,7 +596,6 @@ void World::addHerbivore()
     agents.push_back(a);
 }
 
-
 void World::addNewByCrossover()
 {
 
@@ -613,24 +625,29 @@ void World::addNewByCrossover()
     agents.push_back(anew);
 }
 
-void World::reproduce(int ai, float MR, float MR2)
+void World::reproduce(int ai, int bi, float aMR, float aMR2, float bMR, float bMR2)
 {
+	float MR= min(aMR,bMR);
+	float MR2= min(aMR2,bMR2); //Using min because max, though correct, will lead to rampant mutation (is that perhaps wanted?) will test
     if (randf(0,1)<0.04) MR= MR*randf(1, 10);
     if (randf(0,1)<0.04) MR2= MR2*randf(1, 10);
 
-    agents[ai].initEvent(30,0,0.8,0); //green event means agent reproduced.
-    for (int i=0;i<conf::BABIES;i++) {
+    Agent that= agents[bi];
+	Agent a= agents[ai];
+	if (ai==bi){
+		that= agents[ai];
+		agents[ai].initEvent(30,0,0.8,0); //green event means agent asexually reproduced
+	}else{
+		agents[ai].initEvent(30,0,0,0.8);
+		agents[bi].initEvent(30,0,0,0.8); //blue events mean agents sexually reproduced.
+	}
 
-        Agent a2 = agents[ai].reproduce(MR,MR2);
+    for (int i=0;i<conf::BABIES;i++) {
+        Agent a2 = a.reproduce(that,MR,MR2);
+		if (ai!=bi) a2.hybrid= true; //if parents are not the same agent (sexual reproduction), then mark the child
         a2.id= idcounter;
         idcounter++;
         agents.push_back(a2);
-
-        //TODO fix recording
-        //record this
-        //FILE* fp = fopen("log.txt", "a");
-        //fprintf(fp, "%i %i %i\n", 1, this->id, a2.id); //1 marks the event: child is born
-        //fclose(fp);
     }
 }
 
@@ -640,9 +657,9 @@ void World::save(const char *filename) //(GPA)
 	FILE* fs = fopen(filename, "w");
 	
 	//start with saving world vars and food layer
-	float f= 0;
+	float food= 0;
 	fprintf(fs,"<world>\n");
-	fprintf(fs,"version= %i\n", 0);
+	fprintf(fs,"version= %i\n", CURRENTVERSION);
 	fprintf(fs,"inputs= %i\n", INPUTSIZE);
 	fprintf(fs,"outputs= %i\n", OUTPUTSIZE);
 	fprintf(fs,"brainsize= %i\n", BRAINSIZE);
@@ -653,11 +670,11 @@ void World::save(const char *filename) //(GPA)
 	fprintf(fs,"epoch= %i\n", current_epoch);
 	fprintf(fs,"mod= %i\n", modcounter);
 	fprintf(fs, "<food>\n");
-	for(int fx=0;fx<FW;fx++){
-		for(int fy=0;fy<FH;fy++){
-			f= food[fx][fy];
-			if(f>0){
-				fprintf(fs, "%i %i = %f\n", fx, fy, f);
+	for(cx=0;cx<CW;cx++){
+		for(cy=0;cy<CH;cy++){
+			food= cells[0][cx][cy];
+			if(food>0){
+				fprintf(fs, "%i %i = %f\n", cx, cy, food);
 			}
 		}
 	}
@@ -677,16 +694,16 @@ void World::load(const char *filename) //(GPA)
 	char var2[16];
 	int fxp;
 	int fyp;
-	int mode= -1;//-1= off, 0= world, 1= food, 2= agent, 3= box, 4= connection, 5= eyes
-	int versionnum= 0;
+	int mode= -1;//loading mode: -1= off, 0= world, 1= food, 2= agent, 3= box, 4= connection, 5= eyes
+	int versionnum= CURRENTVERSION;
 
-	Agent xa;
+	Agent xa; //mock agent. should get moved and deleted after loading
 
-	int eyenum= -1;
+	int eyenum= -1; //counters
 	int boxnum= -1;
 	int connnum= -1;
-	int i;
-	float f;
+	int i; //integer buffer
+	float f; //float buffer
 
 	FILE *fl;
 	fl= fopen(filename, "r");
@@ -696,7 +713,7 @@ void World::load(const char *filename) //(GPA)
 			pos= strtok(line,"\n");
 			if(mode!=1){
 				sscanf(line, "%s%s", var, dataval);
-			}else{
+			}else{ //special case for food loading
 				sscanf(line, "%s%s%*c%*c%s", var, var2, dataval);
 			}
 
@@ -754,7 +771,7 @@ void World::load(const char *filename) //(GPA)
 					sscanf(var2, "%i", &fyp);
 					//set the food value there
 					sscanf(dataval, "%f", &f);
-					food[fxp][fyp]= f;
+					cells[0][fxp][fyp]= f;
 //					printf("");
 				}
 			}else if(mode==2){
@@ -819,16 +836,16 @@ void World::load(const char *filename) //(GPA)
 				}else if(strcmp(var, "metabolism=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.metabolism= f;
-				}else if(strcmp(var, "reprate=")==0){
-					sscanf(dataval, "%f", &f);
-					xa.reprate= f;
+//				}else if(strcmp(var, "reprate=")==0){
+//					sscanf(dataval, "%f", &f);
+//					xa.reprate= f; //reprate function removed from bots in version 5/2012
 				}else if(strcmp(var, "repcounter=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.repcounter= f;
 				}else if(strcmp(var, "killed=")==0){
-					//awaiting test on bool values saving
-//					sscanf(dataval, "%f", &f);
-//					xa.soundmod= f;
+					// v 5/2012: added if killed check
+					sscanf(dataval, "%i", &i);
+					if (i==1) xa.spiked= true;
 				}else if(strcmp(var, "temppref=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.temperature_preference= f;
@@ -903,8 +920,13 @@ void World::load(const char *filename) //(GPA)
 		}
 		fclose(fl);
 	} else {
-		printf("Error: Save file specified (%s) doesn't exist", filename);
+		printf("ERROR: Save file specified (%s) doesn't exist", filename);
 	}
+
+	if (versionnum!=CURRENTVERSION){
+		printf("CAUTION: version number of the save file loaded does not match current version number. Bots may bot behave as they originally would.");
+	}
+
 	xa.health= -0.1;
 	xa.pos.x= -30;
 	setInputs();
@@ -951,15 +973,15 @@ void World::reset()
 	current_epoch= 0;
 	modcounter= 0;
 	idcounter= 0;
-    FW= conf::WIDTH/conf::CZ;
-    FH= conf::HEIGHT/conf::CZ; //note: can add custom variables from loaded savegames here possibly
+    CW= conf::WIDTH/conf::CZ;
+    CH= conf::HEIGHT/conf::CZ; //note: can add custom variables from loaded savegames here possibly
 
     agents.clear();
 
 	//clear food layer
-	for(int fx=0;fx<FW;fx++){
-		for(int fy=0;fy<FH;fy++){
-			food[fx][fy]= 0;
+	for(cx=0;cx<CW;cx++){
+		for(cy=0;cy<CH;cy++){
+			cells[0][cx][cy]= 0;
 		}
 	}
 
@@ -968,6 +990,12 @@ void World::reset()
 	//open report file; null it up if it exists
 	FILE* fr = fopen("report.txt", "w");
 	fclose(fr);
+
+	numCarnivore.resize(200, 0);
+    numHerbivore.resize(200, 0);
+	numHybrid.resize(200, 0);
+	numTotal.resize(200, 0);
+    ptr=0;
 }
 
 void World::setClosed(bool close)
@@ -1006,10 +1034,10 @@ void World::draw(View* view, bool drawfood)
 {
     //draw food
     if(drawfood) {
-        for(int i=0;i<FW;i++) {
-            for(int j=0;j<FH;j++) {
-                float f= 0.5*food[i][j]/conf::FOODMAX;
-                view->drawFood(i,j,f);
+        for(int i=0;i<CW;i++) {
+            for(int j=0;j<CH;j++) {
+                float food= 0.5*cells[0][i][j]/conf::FOODMAX;
+                view->drawFood(i,j,food);
             }
         }
     }
@@ -1043,15 +1071,25 @@ int World::numAgents() const
 int World::numFood() const //(GPA) count food cells with 50% food or more
 {
 	int numfood=0;
-	for(int i=0;i<FW;i++) {
-		for(int j=0;j<FH;j++) {
-			float f= 0.5*food[i][j]/conf::FOODMAX;
-			if(f>conf::FOODMAX/2){
+	for(int i=0;i<CW;i++) {
+		for(int j=0;j<CH;j++) {
+			float food= 0.5*cells[0][i][j]/conf::FOODMAX;
+			if(food>conf::FOODMAX/2){
 				numfood++;
 			}
 		}
 	}
 	return numfood;
+}
+
+int World::numHybrids() const
+{
+    int numhybrid= 0;
+    for (int i=0;i<agents.size();i++) {
+		if (agents[i].hybrid) numhybrid++;
+    }
+    
+    return numhybrid;
 }
 
 int World::epoch() const

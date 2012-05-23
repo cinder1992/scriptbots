@@ -36,9 +36,8 @@ Agent::Agent()
 	temperature_preference= cap(randn(2.0*abs(pos.y/conf::HEIGHT - 0.5),0.05));
     hybrid= false;
     herbivore= randf(0,1);
-	reprate= randf(conf::MINREPRATE,15); //15 is the slowest spawnable rep rate, MINREPRATE is fastest
-    repcounter= reprate;
-	metabolism= randf(0.1,4);
+	repcounter= conf::REPRATE;
+	metabolism= randf(0.1,conf::MAXMETABOLISM);
 
     id=0;
     
@@ -84,62 +83,79 @@ void Agent::tick()
 {
     brain.tick(in, out);
 }
-Agent Agent::reproduce(float MR, float MR2)
+Agent Agent::reproduce(Agent that, float MR, float MR2)
 {
-    bool BDEBUG = false;
-    if(BDEBUG) printf("New birth---------------\n");
-    Agent a2;
+	//first, error-check
+	//create baby. Note that if the bot selects itself to mate with, this function acts also as asexual reproduction
+	//NOTES: Agent this is mother, Agent that is father, Agent a2 is daughter
+	Agent a2;
 
-    //spawn the baby somewhere closeby behind agent
+	//spawn the baby somewhere closeby behind agent
     //we want to spawn behind so that agents dont accidentally eat their young right away
     Vector2f fb(conf::BOTRADIUS,0);
     fb.rotate(-a2.angle);
     a2.pos= this->pos + fb + Vector2f(randf(-conf::BOTRADIUS*2,conf::BOTRADIUS*2), randf(-conf::BOTRADIUS*2,conf::BOTRADIUS*2));
     if (a2.pos.x<0) a2.pos.x= conf::WIDTH+a2.pos.x;
-    if (a2.pos.x>=conf::WIDTH) a2.pos.x= a2.pos.x-conf::WIDTH;
+    if (a2.pos.x>conf::WIDTH) a2.pos.x= a2.pos.x-conf::WIDTH;
     if (a2.pos.y<0) a2.pos.y= conf::HEIGHT+a2.pos.y;
-    if (a2.pos.y>=conf::HEIGHT) a2.pos.y= a2.pos.y-conf::HEIGHT;
+    if (a2.pos.y>conf::HEIGHT) a2.pos.y= a2.pos.y-conf::HEIGHT;
 
-    a2.gencount= this->gencount+1;
-	a2.reprate= randn(this->reprate, MR2*2);
-	if (a2.reprate<conf::MINREPRATE) a2.reprate= conf::MINREPRATE;
-    a2.repcounter= a2.reprate;
-	a2.metabolism= randn(this->metabolism, MR2);
-	if (a2.metabolism<0.1) a2.metabolism= 0.1;
-	if (a2.metabolism>4) a2.metabolism= 4;
+	//basic trait inheritance
+	a2.gencount= max(this->gencount+1,that.gencount+1);
+	a2.metabolism= randf(0,1)<0.5 ? this->metabolism : that.metabolism;
+	a2.herbivore= randf(0,1)<0.5 ? this->herbivore : that.herbivore;
 
-    //noisy attribute passing
-    if (randf(0,1)<0.1) a2.MUTRATE1= randn(this->MUTRATE1, conf::METAMUTRATE1);
-    if (randf(0,1)<0.1) a2.MUTRATE2= randn(this->MUTRATE2, conf::METAMUTRATE2);
-    if (this->MUTRATE1<0.001) this->MUTRATE1= 0.001;
-    if (this->MUTRATE2<0.02) this->MUTRATE2= 0.02;
-    a2.herbivore= cap(randn(this->herbivore, 0.03));
-    if (randf(0,1)<MR*5) a2.clockf1= randn(this->clockf1, MR2/2);
+	a2.MUTRATE1= randf(0,1)<0.5 ? this->MUTRATE1 : that.MUTRATE1;
+    a2.MUTRATE2= randf(0,1)<0.5 ? this->MUTRATE2 : that.MUTRATE2;
+	a2.clockf1= randf(0,1)<0.5 ? this->clockf1 : that.clockf1;
+    a2.clockf2= randf(0,1)<0.5 ? this->clockf2 : that.clockf2;
+
+	a2.smellmod = randf(0,1)<0.5 ? this->smellmod : that.smellmod;
+	a2.soundmod = randf(0,1)<0.5 ? this->soundmod : that.soundmod;
+	a2.hearmod = randf(0,1)<0.5 ? this->hearmod : that.hearmod;
+	a2.eyesensmod = randf(0,1)<0.5 ? this->eyesensmod : that.eyesensmod;
+	a2.bloodmod = randf(0,1)<0.5 ? this->bloodmod : that.bloodmod;
+
+	a2.temperature_preference= randf(0,1)<0.5 ? this->temperature_preference : that.temperature_preference;
+    
+	a2.eyefov = randf(0,1)<0.5 ? this->eyefov : that.eyefov;
+	a2.eyedir = randf(0,1)<0.5 ? this->eyedir : that.eyedir;
+
+	//mutations
+	if (randf(0,1)<MR/2) a2.metabolism= randn(a2.metabolism, MR2);
+	if (a2.metabolism<0) a2.metabolism= 0; //not going to bother limiting to 0.1; if it can survive, I don't even care if it's 0.000...1
+	if (a2.metabolism>conf::MAXMETABOLISM) a2.metabolism= conf::MAXMETABOLISM;
+	if (randf(0,1)<MR) a2.herbivore= cap(randn(a2.herbivore, 0.06));
+
+	if (randf(0,1)<MR*2) a2.MUTRATE1= randn(a2.MUTRATE1, conf::METAMUTRATE1);
+	if (randf(0,1)<MR*2) a2.MUTRATE2= randn(a2.MUTRATE2, conf::METAMUTRATE2);
+    if (a2.MUTRATE1<0) a2.MUTRATE1= 0;
+    if (a2.MUTRATE2<0) a2.MUTRATE2= 0;
+
+	if (randf(0,1)<MR*4) a2.clockf1= randn(a2.clockf1, MR2/2);
     if (a2.clockf1<2) a2.clockf1= 2;
-    if (randf(0,1)<MR*5) a2.clockf2= randn(this->clockf2, MR2/2);
+	if (randf(0,1)<MR*4) a2.clockf2= randn(a2.clockf2, MR2/2);
     if (a2.clockf2<2) a2.clockf2= 2;
 
-    if(randf(0,1)<MR*5) {float oo = a2.smellmod; a2.smellmod = randn(this->smellmod, MR2); if(BDEBUG) printf("smell mutated from %f to %f\n", oo, a2.smellmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.soundmod; a2.soundmod = randn(this->soundmod, MR2); if(BDEBUG) printf("sound mutated from %f to %f\n", oo, a2.soundmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.hearmod; a2.hearmod = randn(this->hearmod, MR2); if(BDEBUG) printf("hear mutated from %f to %f\n", oo, a2.hearmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.eyesensmod; a2.eyesensmod = randn(this->eyesensmod, MR2); if(BDEBUG) printf("eyesens mutated from %f to %f\n", oo, a2.eyesensmod);}
-    if(randf(0,1)<MR*5) {float oo = a2.bloodmod; a2.bloodmod = randn(this->bloodmod, MR2); if(BDEBUG) printf("blood mutated from %f to %f\n", oo, a2.bloodmod);}
-    
-    a2.eyefov = this->eyefov;
-    a2.eyedir = this->eyedir;
-    for(int i=0;i<NUMEYES;i++){
-        if(randf(0,1)<MR*5) a2.eyefov[i] = randn(a2.eyefov[i], MR2);
+	if (randf(0,1)<MR) a2.smellmod= randn(a2.smellmod, MR2);
+	if (randf(0,1)<MR) a2.soundmod= randn(a2.soundmod, MR2);
+	if (randf(0,1)<MR) a2.hearmod= randn(a2.hearmod, MR2);
+	if (randf(0,1)<MR) a2.eyesensmod= randn(a2.eyesensmod, MR2);
+	if (randf(0,1)<MR) a2.bloodmod= randn(a2.bloodmod, MR2);
+
+	if (randf(0,1)<MR/2) a2.temperature_preference= cap(randn(a2.temperature_preference, MR2));
+
+	for(int i=0;i<NUMEYES;i++){
+        if(randf(0,1)<MR/2) a2.eyefov[i] = randn(a2.eyefov[i], MR2);
         if(a2.eyefov[i]<0) a2.eyefov[i] = 0;
         
-        if(randf(0,1)<MR*5) a2.eyedir[i] = randn(a2.eyedir[i], MR2);
+        if(randf(0,1)<MR) a2.eyedir[i] = randn(a2.eyedir[i], MR2);
         if(a2.eyedir[i]<0) a2.eyedir[i] = 0;
         if(a2.eyedir[i]>2*M_PI) a2.eyedir[i] = 2*M_PI;
     }
     
-    a2.temperature_preference= cap(randn(this->temperature_preference, MR2));
-    
-    //mutate brain here
-    a2.brain= this->brain;
+    //create brain here
+	a2.brain= this->brain.crossover(that.brain);
     a2.brain.mutate(MR,MR2);
     
     return a2;
@@ -154,7 +170,6 @@ Agent Agent::crossover(const Agent& other)
     anew.hybrid=true; //set this non-default flag
     anew.gencount= this->gencount;
     if (other.gencount<anew.gencount) anew.gencount= other.gencount;
-	anew.reprate= randf(0,1)<0.5 ? this->reprate : other.reprate;
 
     //agent heredity attributes
     anew.clockf1= randf(0,1)<0.5 ? this->clockf1 : other.clockf1;
@@ -213,9 +228,7 @@ void Agent::saveAgent(FILE *fs)
 		fprintf(fs, "</eye>\n");
 	}
 	fprintf(fs, "metabolism= %f\n", this->metabolism);
-	fprintf(fs, "reprate= %f\n", this->reprate);
 	fprintf(fs, "repcounter= %f\n", this->repcounter);
-	fprintf(fs, "reprate= %f\n", this->reprate);
 	fprintf(fs, "killed= %i\n", (int) this->spiked);
 	fprintf(fs, "temppref= %f\n", this->temperature_preference);
 //	fprintf(fs, "indicator= %f\n", this->indicator);

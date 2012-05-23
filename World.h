@@ -29,6 +29,7 @@ public:
     
     int numAgents() const;
 	int numFood() const;
+	int numHybrids() const;
     int epoch() const;
     
     //mouse interaction
@@ -43,6 +44,8 @@ public:
     
     std::vector<int> numCarnivore;
     std::vector<int> numHerbivore; 
+	std::vector<int> numHybrid;
+	std::vector<int> numTotal;
     int ptr;
 
 	int deleting;
@@ -58,20 +61,22 @@ private:
     
     void writeReport();
     
-    void reproduce(int ai, float MR, float MR2);
+    void reproduce(int ai, int bi, float aMR, float aMR2, float bMR, float bMR2);
     
     int modcounter;
     int current_epoch;
     int idcounter;
     
     std::vector<Agent> agents;
-    
-    // food
-    int FW;
-    int FH;
-    int fx;
-    int fy;
-    float food[conf::WIDTH/conf::CZ][conf::HEIGHT/conf::CZ];
+
+	//cells; replaces food layer, can be expanded (3 layers currently)
+	//[LAYER]: 0= plant food (meat, poison, water/land, light, temperature layers also possible with very little coding)
+	int CW;
+	int CH;
+	int cx;
+	int cy;
+	float cells[3][conf::WIDTH/conf::CZ][conf::HEIGHT/conf::CZ]; //[LAYER][CELL_X][CELL_Y]
+
     bool CLOSED; //if environment is closed, then no random bots are added per time interval
 };
 

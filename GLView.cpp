@@ -15,6 +15,14 @@ void gl_processNormalKeys(unsigned char key, int x, int y)
 {
     GLVIEW->processNormalKeys(key, x, y);
 }
+void gl_processSpecialKeys(int key, int x, int y)
+{
+    GLVIEW->processSpecialKeys(key, x, y);
+}
+void gl_processReleasedKeys(unsigned char key, int x, int y)
+{
+	GLVIEW->processReleasedKeys(key, x, y);
+}
 void gl_menu(int key)
 {
     GLVIEW->menu(key);
@@ -151,14 +159,6 @@ void GLView::menu(int key) //(GPA)
     } else if (key=='p') {
         //pause
         paused= !paused;
-	} else if (key=='w') {
-        ytranslate += 20/scalemult;
-	} else if (key=='a') {
-		xtranslate += 20/scalemult;
-	} else if (key=='s') {
-		ytranslate -= 20/scalemult;
-	} else if (key=='d') { // (GPA) movement control
-		xtranslate -= 20/scalemult;
     } else if (key=='m') { //drawing
         draw= !draw;
     } else if (key==43) { //+
@@ -175,7 +175,10 @@ void GLView::menu(int key) //(GPA)
         world->addRandomBots(5, 1);
     } else if (key=='c') {
         world->setClosed( !world->isClosed() );
-        printf("Environment closed now= %s\n",(world->isClosed() ? "true" : "false" ));
+		glutGet(GLUT_MENU_NUM_ITEMS);
+		if (world->isClosed()) glutChangeToMenuEntry(3, "Open World", 'c');
+		else glutChangeToMenuEntry(3, "Close World", 'c');
+		glutSetMenu(m_id);
     } else if (key=='l') {
         if(following==0) following= 2;
         else following= 0;
@@ -192,8 +195,8 @@ void GLView::menu(int key) //(GPA)
         if(scalemult<0.01) scalemult=0.01;
 	}else if (key==60) { //zoom- <
 		scalemult -= 0.012;
-	}else if (key==32) { //spacebar
-		world->pinput1+= 20;
+	}else if (key==32) { //spacebar input (pressed)
+		world->pinput1= 1;
 	}else if (key==2000) { //menu only, save world
 		printf("Type a valid file name (ex: WORLD.SCB): ");
 		scanf("%s", filename);
@@ -212,10 +215,63 @@ void GLView::menu(int key) //(GPA)
 	}
 }
 
+void GLView::menuS(int key) //(GPA)
+{
+	switch(key) {
+		case GLUT_KEY_UP : 
+			ytranslate += 20/scalemult;
+			break;
+		case GLUT_KEY_LEFT :
+			xtranslate += 20/scalemult;
+			break;
+		case GLUT_KEY_DOWN :
+			ytranslate -= 20/scalemult;
+			break;
+		case GLUT_KEY_RIGHT : // (GPA) movement control
+			xtranslate -= 20/scalemult;
+			break;
+    }
+}
 
 void GLView::processNormalKeys(unsigned char key, int x, int y)
 {
 	menu(key);    
+}
+
+void GLView::processSpecialKeys(int key, int x, int y)
+{
+	menuS(key);    
+}
+
+void GLView::processReleasedKeys(unsigned char key, int x, int y)
+{
+	switch(key) {
+		case 32 : //spacebar input (released)
+			world->pinput1= 0;
+			break;
+	}
+}
+
+void GLView::glCreateMenu(void)
+{
+	m_id = glutCreateMenu(gl_menu); //right-click context menu
+	glutAddMenuEntry("Fast Mode", 'm');
+	glutAddMenuEntry("Pause", 'p');
+	glutAddMenuEntry("Close World", 'c');
+	glutAddMenuEntry("Follow", 'l');
+	glutAddMenuEntry("Follow Oldest", 'o');
+	glutAddMenuEntry("Follow Highest Gen", 'g');
+	glutAddMenuEntry("-------------------",-1);
+	glutAddMenuEntry("New Agent", 'b');
+	glutAddMenuEntry("New Agent (H)", 'h');
+	glutAddMenuEntry("New Agent (C)", 'n');
+	glutAddMenuEntry("Delete Agent", 127);
+	glutAddMenuEntry("Save World",2000);
+	glutAddMenuEntry("Load World",2001);
+	glutAddMenuEntry("-------------------",-1);
+	glutAddMenuEntry("Reset Agents", 9);
+	glutAddMenuEntry("Exit", 27);
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
 void GLView::handleIdle()
@@ -281,7 +337,7 @@ void GLView::drawAgent(const Agent& agent)
 {
     float n;
     float r= conf::BOTRADIUS;
-    float rp= conf::BOTRADIUS+2;
+    float rp= conf::BOTRADIUS+2.5;
     //handle selected agent
     if (agent.selectflag>0) {
 
@@ -318,7 +374,7 @@ void GLView::drawAgent(const Agent& agent)
         }
         yy+=ss*2;
 
-        //draw brain. Eventually move this to brain class?
+        //draw brain.
         
         float offx=0;
         ss=8;
@@ -384,8 +440,8 @@ void GLView::drawAgent(const Agent& agent)
     if(agent.dfood!=0){
         glBegin(GL_POLYGON);
         float mag=cap(abs(agent.dfood)/conf::FOODTRANSFER/3);
-        if(agent.dfood>0) glColor3f(0,mag,0); //draw boost as green outline
-        else glColor3f(mag,0,0);
+        if(agent.dfood>0) glColor3f(0,mag,0);
+        else glColor3f(mag,0,0); //draw sharing as a thick green or red outline
         for (int k=0;k<17;k++){
             n = k*(M_PI/8);
             glVertex3f(agent.pos.x+rp*sin(n),agent.pos.y+rp*cos(n),0);
@@ -517,7 +573,7 @@ void GLView::drawAgent(const Agent& agent)
 		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+24, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0f, 1.0f);
 
 		//repcounter
-		float dr = agent.metabolism/4;
+		float dr = agent.metabolism/conf::MAXMETABOLISM; //red if high metabolism, blue if low 
 		sprintf(buf2, "%.2f", agent.repcounter);
 		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+36, GLUT_BITMAP_TIMES_ROMAN_24, buf2, dr/2+0.5, dr/2+0.5, (1.0-dr)/2+0.5);
 	}
@@ -525,22 +581,33 @@ void GLView::drawAgent(const Agent& agent)
 
 void GLView::drawMisc()
 {
-    float mm = 3;
+	float mm = 3;
     //draw misc info
     glBegin(GL_LINES);
-    glColor3f(0,1,0);
+	glColor3f(0,0,0.8); //hybrid count
+    for(int q=0;q<world->numHybrid.size()-1;q++) {
+        if(q==world->ptr-1) continue;
+		glVertex3f(q*10,-20 -mm*world->numHybrid[q],0);
+        glVertex3f((q+1)*10,-20 -mm*world->numHybrid[q+1],0);
+    }
+    glColor3f(0,1,0); //herbivore count
     for(int q=0;q<world->numHerbivore.size()-1;q++) {
         if(q==world->ptr-1) continue;
         glVertex3f(q*10,-20 -mm*world->numHerbivore[q],0);
         glVertex3f((q+1)*10,-20 -mm*world->numHerbivore[q+1],0);
     }
-    glColor3f(1,0,0);
-    for(int q=0;q<world->numHerbivore.size()-1;q++) {
+    glColor3f(1,0,0); //carnivore count
+    for(int q=0;q<world->numCarnivore.size()-1;q++) {
         if(q==world->ptr-1) continue;
         glVertex3f(q*10,-20 -mm*world->numCarnivore[q],0);
         glVertex3f((q+1)*10,-20 -mm*world->numCarnivore[q+1],0);
     }
-    glColor3f(0,0,0);
+	glColor3f(0,0,0); //total count
+	for(int q=0;q<world->numTotal.size()-1;q++) {
+        if(q==world->ptr-1) continue;
+        glVertex3f(q*10,-20 -mm*world->numTotal[q],0);
+        glVertex3f((q+1)*10,-20 -mm*world->numTotal[q+1],0);
+    }
     glVertex3f(world->ptr*10,-20,0);
 	glVertex3f(world->ptr*10,-20 -mm*world->numAgents(),0);
     glEnd();
@@ -558,6 +625,7 @@ void GLView::drawFood(int x, int y, float quantity)
 {
     //draw food
     if (drawfood) {
+		//TODO: change drawfood var into draw mode control to switch between layers
 //		float dd= 0.5;
 //		if (conf::TEMPERATURE_DISCOMFORT!=0) dd= 2.0*abs(y*conf::CZ/conf::HEIGHT - 0.5);
         glBegin(GL_QUADS);

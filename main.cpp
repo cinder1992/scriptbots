@@ -37,30 +37,14 @@ int main(int argc, char **argv) {
     glutReshapeFunc(gl_changeSize);
 
     glutKeyboardFunc(gl_processNormalKeys);
+	glutSpecialFunc(gl_processSpecialKeys);
+	glutKeyboardUpFunc(gl_processReleasedKeys);
     glutMouseFunc(gl_processMouse);
 	glutMotionFunc(gl_processMouseActiveMotion);
 	glutPassiveMotionFunc(gl_processMousePassiveMotion);
 
-	glutCreateMenu(gl_menu); //right-click context menu
-	glutAddMenuEntry("Fast Mode", 'm');
-	glutAddMenuEntry("Pause", 'p');
-	glutAddMenuEntry("Toggle Closed World", 'c');
-	glutAddMenuEntry("Follow", 'l');
-	glutAddMenuEntry("Follow Oldest", 'o');
-	glutAddMenuEntry("Follow Highest Gen", 'g');
-//	glutAddMenuEntry("Save Agent", 'v');
-//	glutAddMenuEntry("Load Agent", 'l');
-	glutAddMenuEntry("-------------------",-1);
-	glutAddMenuEntry("New Agent", 'b');
-	glutAddMenuEntry("New Agent (H)", 'h');
-	glutAddMenuEntry("New Agent (C)", 'n');
-	glutAddMenuEntry("Delete Agent", 127);
-	glutAddMenuEntry("Save World",2000);
-	glutAddMenuEntry("Load World",2001);
-	glutAddMenuEntry("-------------------",-1);
-	glutAddMenuEntry("Reset Agents", 9);
-	glutAddMenuEntry("Exit", 27);
-	glutAttachMenu(GLUT_RIGHT_BUTTON);
+	//create right click context menu
+	GLVIEW->glCreateMenu();
 
     glutMainLoop();
     return 0;

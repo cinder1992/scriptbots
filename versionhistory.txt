@@ -1,3 +1,19 @@
+5/23/12 changes
++ More graph features: total count (black) and hybrid count (blue) plots, erases on world reset & load.
++ Fixed the crossover function. Re-introduced sexual reproduction; works off same code for asexual reproduction
++ Camera pan keystrokes now arrow keys, instead of "w,a,s,d" keys, which I plan to change into selected bot control
++ Food spread (seeding) range now settings.h variable
++ Improved and expandable cells array: replaces food layer, boasts a possible 3 additional layers (can be expanded)
+  cells[LAYER][CELL_X][CELL_Y]; for [LAYER]: 0= plant food (meat, poison, water/land, light, temperature layers also possible with very little coding)
+- Removed reprate agent variable. All agents must eat REPRATE amount of food in order to reproduce.
+= Brain adjustments. Reactivated box gb - global weights (were disabled in some previous version)
+= Metabolism now has primary control over agent's reproduction rate. Also, now effects rate of health loss (higher metabolism -> faster health loss)
+= Changes to save-load function: remove reprate val, improved version checking (old versions may not behave as expected)
+= Relocation of menu creating; look for glCreateMenu() function in GLView.cpp
+= "Toggle closed world" menu option now represents correct open or closed state in-menu
+= Rewrote player input code to something much more professional...
+= Even more food balancing changes (including allowing any non-zero food cell to seed)
+
 4/15/12 changes
 + Physics collision correction incorperated
 + Added metabolism agent variable, effects rate of food to repcounter, and meat to repcounter. Range: 0 -> 4

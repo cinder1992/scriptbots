@@ -95,11 +95,11 @@ void MLPBrain::tick(vector< float >& in, vector< float >& out)
 
 			}
 			
-//			acc*= abox->gw;
+			acc*= abox->gw;
 			acc+= abox->bias;
 	        
 			//put through sigmoid
-			acc= 1.0/(1.0+exp(-acc));
+			acc= 1.0/(1.0+exp(-acc)); //no. This destroys possibility of absolute on or absolute off neurons. Just cap it.
 	        
 			abox->target= cap(acc);
 		}
