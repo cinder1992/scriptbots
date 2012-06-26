@@ -1,3 +1,42 @@
+6/26/12 changes
++ Added player control of agents: use "w,a,s,d" keys to control the selected agent. Is toggleable ("w,a,s,d" keys can activate, 
+  menu option can toggle to either state)
+  w: increase speed; s: decrease speed; a: increase right, decrease left (turn left); d: increase left, decrease right (turn right)
++ Agent color now changes a fraction of the difference between its current color and the respective output; makes for smoother color changes
++ Added new output: Stimulus - if greater than 0.5, will allow decay and strengthening of brain box weights
++ New cell layers: plants, meat, temp are constructed, agents intereact only with plant and meat layers. More can be easily programed
++ Added meat layer. Feeds carnivores, with high yield, exponential decay
++ Added temperature layer: calculated at world init, shows where "heat" is
++ Closed world setting also disables FOODADDFREQ from adding food; only FOODMIN can add food if triggered
++ Added species agent variable, to reduce intermixing of species. All random bots have ids between -10 and 
+  10, to induce beneficial crossovers.
++ Agent selection now toggleable by clicking on the selected agent to deselect it (toggling selection will also disable player control)
++ defined LAYERS: will effect the construct of cells array and the layer toggle
++ Eyes now can see meat and plant food in the world
++ Follow healthiest agent now an option, most useful when no established species exist yet.
++ Added smooth tracking of agents when follow is enabled, meaning quick screen snaps are a thing of the past
++ Saving/loading additions: save-over existing file check and saving & loading of screen location and selected agent
+
+- Removed carnivore kill-sharing. Dead agents are now directly converted to the meat layer
+- Removed food sensor input
+- Removed add agents keystrokes. Adding agents now can only be triggered by right-click menu
+- Removed edge-based scroll
+
+= Loading/saving now completely modularized.
+= Changed drawfood toggle to layer integer, allowing different cell layers to be displayed. Can be changed with the 'k' and 'l' keys
+= Fixed temperature sensor to correctly involve agents' y-axis, rather than their x-axis, locations
+= Modified proximity formulas
+= Increased DIST
+= Changed interface: must left-click nearer to bots to select them, left-click-drag moves the scene, and resets follow to zero if moved quickly enough
+= Changes as required for new layer system to loading and saving code
+= Fixed loading agents "inheriting" traits from previously loaded agents bug
+= Fixed spacebar input (and direction inputs) bugs
+= Fixed negative weights being set to 0 bug
+= Nearly half of all boxes have weights that have a decent chance of being at -1 or 1, to better facititate equal value and
+  difference connections
+= Agent age report on selection changed to report its species id
+= Some code opimizations
+
 5/23/12 changes
 + More graph features: total count (black) and hybrid count (blue) plots, erases on world reset & load.
 + Fixed the crossover function. Re-introduced sexual reproduction; works off same code for asexual reproduction

@@ -28,6 +28,8 @@ int main(int argc, char **argv) {
     //GLUT SETUP
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
     glutInitWindowPosition(30,30);
     glutInitWindowSize(conf::WWIDTH,conf::WHEIGHT);
     glutCreateWindow("Scriptbots");

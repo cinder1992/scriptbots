@@ -4,6 +4,7 @@
 
 #include "View.h"
 #include "World.h"
+//#include "ReadWrite.h"
 
 class GLView;
 
@@ -28,7 +29,7 @@ public:
     virtual ~GLView();
     
     virtual void drawAgent(const Agent &a);
-    virtual void drawFood(int x, int y, float quantity);
+    virtual void drawCell(int x, int y, float quantity);
     virtual void drawMisc();
     
     void setWorld(World* w);
@@ -47,18 +48,18 @@ public:
     void renderScene();
 
 	void glCreateMenu(void);
-	int m_id;
+	int m_id; //main context menu
     
 private:
     
     World *world;
-    bool paused;
-    bool draw;
-    int skipdraw;
-    bool drawfood;
+    bool paused; //are we paused?
+    bool draw; //are we drawing?
+    int skipdraw; //are we skipping some frames?
+	int layer; //what cell layer is currently active? 0= off, 1= plant food, 2= meat, 3= temperature
     char buf[100];
     char buf2[10];
-    int modcounter;
+    int modcounter; //tick counter
     int lastUpdate;
     int frames;
     

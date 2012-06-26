@@ -1,4 +1,5 @@
 #include "GLView.h"
+#include "ReadWrite.h"
 
 #include <ctime>
 
@@ -76,7 +77,7 @@ GLView::GLView(World *s) :
         paused(false),
         draw(true),
         skipdraw(1),
-        drawfood(true),
+        layer(1),
         modcounter(0),
         frames(0),
         lastUpdate(0)
@@ -84,7 +85,7 @@ GLView::GLView(World *s) :
 
     xtranslate= 0.0;
     ytranslate= 0.0;
-    scalemult= 0.2; //1.0;
+    scalemult= 0.2;
     downb[0]=0;downb[1]=0;downb[2]=0;
     mousex=0;mousey=0;
     
@@ -122,38 +123,39 @@ void GLView::processMouse(int button, int state, int x, int y)
 void GLView::processMouseActiveMotion(int x, int y)
 {
     //printf("MOUSE MOTION x=%i y=%i, %i %i %i\n", x, y, downb[0], downb[1], downb[2]);
-    
-    if(downb[1]==1){
+	if (downb[0]==1) {
+		//left mouse button drag: pan around
+		xtranslate += (x-mousex)/scalemult;
+        ytranslate += (y-mousey)/scalemult;
+		if (abs(x-mousex)>8 || abs(x-mousex)>8) following= 0;
+	}  
+    if (downb[1]==1) {
         //mouse wheel. Change scale
         scalemult -= 0.002*(y-mousey);
         if(scalemult<0.01) scalemult=0.01;
     }
-    
-/*    if(downb[2]==1){ //disabled (GPA)
-        //right mouse button. Pan around
-        xtranslate += 2*(x-mousex);
-        ytranslate += 2*(y-mousey);
+/*    if(downb[2]==1){ //disabled
+        //right mouse button.
     }*/
-    
-//    printf("%f %f %f \n", scalemult, xtranslate, ytranslate);
-    
+   
     mousex=x; mousey=y;
 }
 
 void GLView::processMousePassiveMotion(int x, int y)
 {
-	//(GPA) for mouse scrolling
-	if(y<=30) ytranslate += 2*(30-y);
+	//(GPA) for mouse scrolling. DISABLED
+/*	if(y<=30) ytranslate += 2*(30-y);
 	if(y>=conf::WHEIGHT-30) ytranslate -= 2*(y-(conf::WHEIGHT-30));
 	if(x<=30) xtranslate += 2*(30-x);
-	if(x>=conf::WWIDTH-30) xtranslate -= 2*(x-(conf::WWIDTH-30));
+	if(x>=conf::WWIDTH-30) xtranslate -= 2*(x-(conf::WWIDTH-30));*/
 }
 
 void GLView::menu(int key) //(GPA)
 {
+	ReadWrite* savehelper= new ReadWrite(); //for loading/saving
 	if (key == 27)
         exit(0);
-    else if (key==9) {
+    else if (key==9) { //[tab] reset
         world->reset();
         printf("Agents reset\n");
     } else if (key=='p') {
@@ -165,28 +167,42 @@ void GLView::menu(int key) //(GPA)
         skipdraw++;
     } else if (key==45) { //-
         skipdraw--;
-    } else if (key=='f') {
-        drawfood=!drawfood;
-    } else if (key=='b') {
-        for (int i=0;i<5;i++){world->addNewByCrossover();}
-    } else if (key=='n') {
+    } else if (key=='l' || key=='k') { //layer switch; l= "next", k= "previous"
+		if (key=='l') layer++;
+		else layer--;
+		if (layer>LAYERS) layer= 0;
+		if (layer<0) layer= LAYERS;
+		glutGet(GLUT_MENU_NUM_ITEMS);
+		//begin glut for menu changes. Note that it can only show the "next" layer
+		if (layer==0) glutChangeToMenuEntry(2, "Show: Plant Food", 'l');
+		else if (layer==1) glutChangeToMenuEntry(2, "Show: Meat Food", 'l');
+		else if (layer==2) glutChangeToMenuEntry(2, "Show: Temperature", 'l');
+		else if (layer==LAYERS) glutChangeToMenuEntry(2, "Show: None", 'l');
+		else glutChangeToMenuEntry(2, "Show: next layer",'l');
+		glutSetMenu(m_id);
+    } else if (key==1002) {
+        world->addRandomBots(5);
+    } else if (key==1003) {
         world->addRandomBots(5, 2);
-    } else if (key=='h') {
+    } else if (key==1004) {
         world->addRandomBots(5, 1);
     } else if (key=='c') {
         world->setClosed( !world->isClosed() );
 		glutGet(GLUT_MENU_NUM_ITEMS);
-		if (world->isClosed()) glutChangeToMenuEntry(3, "Open World", 'c');
-		else glutChangeToMenuEntry(3, "Close World", 'c');
+		if (world->isClosed()) glutChangeToMenuEntry(4, "Open World", 'c');
+		else glutChangeToMenuEntry(4, "Close World", 'c');
 		glutSetMenu(m_id);
-    } else if (key=='l') {
-        if(following==0) following= 2;
+    } else if (key=='f') {
+        if(following==0) following= 2; //follow selected agent
         else following= 0;
 	} else if(key=='o') {
-        if(following==0) following= 1; //follow oldest agent: toggle
+        if(following==0) following= 1; //follow oldest agent
         else following= 0;
 	} else if(key=='g') {
-		if(following==0) following= 3;
+		if(following==0) following= 3; //follow most advanced generation agent
+		else following= 0;
+	} else if(key=='h') {
+		if(following==0) following= 4; //follow healthiest
 		else following= 0;
 	}else if (key==127) { //delete
 		world->deleting= 1;
@@ -195,42 +211,57 @@ void GLView::menu(int key) //(GPA)
         if(scalemult<0.01) scalemult=0.01;
 	}else if (key==60) { //zoom- <
 		scalemult -= 0.012;
-	}else if (key==32) { //spacebar input (pressed)
+	}else if (key==32) { //spacebar input [pressed]
 		world->pinput1= 1;
-	}else if (key==2000) { //menu only, save world
+	}else if (key==119) { //w (move faster)
+		world->pcontrol= true;
+		world->pleft= cap(world->pleft + 0.08);
+		world->pright= cap(world->pright + 0.08);
+	}else if (key==97) { //a (turn left)
+		world->pcontrol= true;
+		world->pleft= cap(world->pleft - 0.05 + (world->pright-world->pleft)*0.05);
+		world->pright= cap(world->pright + 0.05 + (world->pleft-world->pright)*0.05);
+	}else if (key==115) { //s (move slower)
+		world->pcontrol= true;
+		world->pleft= cap(world->pleft - 0.08);
+		world->pright= cap(world->pright - 0.08);
+	}else if (key==100) { //d (turn right)
+		world->pcontrol= true;
+		world->pleft= cap(world->pleft + 0.05 + (world->pright-world->pleft)*0.05);
+		world->pright= cap(world->pright - 0.05 + (world->pleft-world->pright)*0.05);
+	} else if (key==999) { //player control
+		world->setControl(!world->pcontrol);
+		glutGet(GLUT_MENU_NUM_ITEMS);
+		if (world->pcontrol) glutChangeToMenuEntry(5, "Release Agent", 999);
+		else glutChangeToMenuEntry(5, "Control Agent", 999);
+		glutSetMenu(m_id);
+	}else if (key==1000) { //menu only, save world
 		printf("Type a valid file name (ex: WORLD.SCB): ");
 		scanf("%s", filename);
-		world->save(filename);
-	}else if (key==2001) { //menu only, load world
+		savehelper->saveWorld(world, xtranslate, ytranslate, filename);
+	}else if (key==1001) { //menu only, load world
 		printf("Type a valid file name (ex: WORLD.SCB): ");
 		scanf("%s", filename);
 		//reset first
 		world->reset();
-		world->load(filename);
+		savehelper->loadWorld(world, xtranslate, ytranslate, filename);
     } else {
         printf("Unknown key pressed: %i\n", key);
     }
-	if (key!=32) {
-		world->pinput1= 0;
-	}
+	//other keys: '1':49, '2':50, ..., '0':48
 }
 
-void GLView::menuS(int key) //(GPA)
+void GLView::menuS(int key) // (GPA) movement control
 {
-	switch(key) {
-		case GLUT_KEY_UP : 
-			ytranslate += 20/scalemult;
-			break;
-		case GLUT_KEY_LEFT :
-			xtranslate += 20/scalemult;
-			break;
-		case GLUT_KEY_DOWN :
-			ytranslate -= 20/scalemult;
-			break;
-		case GLUT_KEY_RIGHT : // (GPA) movement control
-			xtranslate -= 20/scalemult;
-			break;
-    }
+	if (key == GLUT_KEY_UP) {
+       ytranslate += 20/scalemult;
+	} else if (key == GLUT_KEY_LEFT) {
+		xtranslate += 20/scalemult;
+	} else if (key == GLUT_KEY_DOWN) {
+		ytranslate -= 20/scalemult;
+	} else if (key == GLUT_KEY_RIGHT) {
+		xtranslate -= 20/scalemult;
+	}
 }
 
 void GLView::processNormalKeys(unsigned char key, int x, int y)
@@ -245,32 +276,33 @@ void GLView::processSpecialKeys(int key, int x, int y)
 
 void GLView::processReleasedKeys(unsigned char key, int x, int y)
 {
-	switch(key) {
-		case 32 : //spacebar input (released)
+	if (key==32) {//spacebar input [released]
 			world->pinput1= 0;
-			break;
 	}
 }
 
 void GLView::glCreateMenu(void)
 {
 	m_id = glutCreateMenu(gl_menu); //right-click context menu
-	glutAddMenuEntry("Fast Mode", 'm');
-	glutAddMenuEntry("Pause", 'p');
-	glutAddMenuEntry("Close World", 'c');
-	glutAddMenuEntry("Follow", 'l');
-	glutAddMenuEntry("Follow Oldest", 'o');
-	glutAddMenuEntry("Follow Highest Gen", 'g');
+	glutAddMenuEntry("Fast Mode (m)", 'm');
+	glutAddMenuEntry("Show: Meat Food (k,l)", 'l');
+	glutAddMenuEntry("Pause (p)", 'p');
+	glutAddMenuEntry("Close World (c)", 'c');
+	glutAddMenuEntry("Control Selected (w,a,s,d)", 999);
+	glutAddMenuEntry("Follow Selected (f)", 'f');
+	glutAddMenuEntry("Follow Oldest (o)", 'o');
+	glutAddMenuEntry("Follow Highest Gen (g)", 'g');
+	glutAddMenuEntry("Follow Healthiest (h)", 'h');
 	glutAddMenuEntry("-------------------",-1);
-	glutAddMenuEntry("New Agent", 'b');
-	glutAddMenuEntry("New Agent (H)", 'h');
-	glutAddMenuEntry("New Agent (C)", 'n');
-	glutAddMenuEntry("Delete Agent", 127);
-	glutAddMenuEntry("Save World",2000);
-	glutAddMenuEntry("Load World",2001);
+	glutAddMenuEntry("Spawn Agents", 1002);
+	glutAddMenuEntry("Spawn Herbivores", 1003);
+	glutAddMenuEntry("Spawn Carnivores", 1004);
+	glutAddMenuEntry("Delete Agent (del)", 127);
+	glutAddMenuEntry("Save World",1000);
+	glutAddMenuEntry("Load World",1001);
 	glutAddMenuEntry("-------------------",-1);
-	glutAddMenuEntry("Reset Agents", 9);
-	glutAddMenuEntry("Exit", 27);
+	glutAddMenuEntry("Reset Agents (tab)", 9);
+	glutAddMenuEntry("Exit (esc)", 27);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
@@ -318,16 +350,12 @@ void GLView::renderScene()
         world->positionOfInterest(following, xi, yi);
 
 		if(xi!=0 && yi!=0){
-			xtranslate= -xi; ytranslate= -yi;
+			xtranslate+= 0.1*(-xi-xtranslate); ytranslate+= 0.1*(-yi-ytranslate);
 		}
-        
-      
-        //reset this if there is no interest. Probably agent that was followed died
-        //if(xi==0 && yi==0) following = 0;
     }
 	glTranslatef(xtranslate, ytranslate, 0.0f);
     
-    world->draw(this, drawfood);
+    world->draw(this, layer);
 
     glPopMatrix();
     glutSwapBuffers();
@@ -343,7 +371,7 @@ void GLView::drawAgent(const Agent& agent)
 
         //draw selection
         glBegin(GL_POLYGON);
-        glColor3f(1,1,0);
+        glColor4f(1,1,1,0.5);
         drawCircle(agent.pos.x, agent.pos.y, conf::BOTRADIUS+5);
         glEnd();
 
@@ -454,7 +482,7 @@ void GLView::drawAgent(const Agent& agent)
     //draw indicator of this agent... used for various events
      if (agent.indicator>0) {
          glBegin(GL_POLYGON);
-         glColor3f(agent.ir,agent.ig,agent.ib);
+         glColor4f(agent.ir,agent.ig,agent.ib,0.5);
          drawCircle(agent.pos.x, agent.pos.y, conf::BOTRADIUS+((int)agent.indicator));
          glEnd();
      }
@@ -465,20 +493,15 @@ void GLView::drawAgent(const Agent& agent)
     glColor3f(0.5,0.5,0.5);
     for(int q=0;q<NUMEYES;q++) {
         glVertex3f(agent.pos.x,agent.pos.y,0);
-//        float aa= agent.angle+agent.eyedir[q]+agent.eyefov[q];
         float aa= agent.angle+agent.eyedir[q];
         glVertex3f(agent.pos.x+(conf::BOTRADIUS*4)*cos(aa),
                    agent.pos.y+(conf::BOTRADIUS*4)*sin(aa),
                    0);
-        //aa = agent.angle+agent.eyedir[q]-agent.eyefov[q];
-        //glVertex3f(agent.pos.x,agent.pos.y,0);
-        //glVertex3f(agent.pos.x+(conf::BOTRADIUS*4)*cos(aa),
-        //           agent.pos.y+(conf::BOTRADIUS*4)*sin(aa),
-        //           0);
     }
     glEnd();
     
-    glBegin(GL_POLYGON); //body
+    glBegin(GL_POLYGON); 
+	//body
     glColor3f(agent.red,agent.gre,agent.blu);
     drawCircle(agent.pos.x, agent.pos.y, conf::BOTRADIUS);
     glEnd();
@@ -502,25 +525,23 @@ void GLView::drawAgent(const Agent& agent)
     glEnd();
 
 	if(scalemult > .3) {//hide extra visual data if really far away
-		//and health
+		//health
 		int xo=18;
 		int yo=-15;
 		glBegin(GL_QUADS);
-		//black background
 		glColor3f(0,0,0);
 		glVertex3f(agent.pos.x+xo,agent.pos.y+yo,0);
 		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo,0);
 		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
 		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
 
-		//health
 		glColor3f(0,0.8,0);
 		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+20*(2-agent.health),0);
 		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+20*(2-agent.health),0);
 		glVertex3f(agent.pos.x+xo+5,agent.pos.y+yo+40,0);
 		glVertex3f(agent.pos.x+xo,agent.pos.y+yo+40,0);
 
-		//if this is a hybrid, we want to put a marker down
+		//hybrid marker
 		if (agent.hybrid) {
 			glColor3f(0,0,0.8);
 			glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo,0);
@@ -529,21 +550,23 @@ void GLView::drawAgent(const Agent& agent)
 			glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+10,0);
 		}
 
+		//stomach dichotomy indicator
 		glColor3f(1-agent.herbivore,agent.herbivore,0);
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+12,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+12,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+22,0);
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+22,0);
 
-		//how much sound is this bot making?
+		//sound volume indicator
 		glColor3f(agent.soundmul,agent.soundmul,agent.soundmul);
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+24,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+24,0);
 		glVertex3f(agent.pos.x+xo+12,agent.pos.y+yo+34,0);
 		glVertex3f(agent.pos.x+xo+6,agent.pos.y+yo+34,0);
 
-		//draw temp discomfort indicator
+		//temp discomfort indicator
 		//calculate temperature at the agents spot. (based on distance from horizontal equator) Orange is bad, white is good
+		//convert into calc based on agent's spot on the cell grid?
 		float dd= 2.0*abs(agent.pos.y/conf::HEIGHT - 0.5);
         float discomfort= cap(sqrt(abs(dd-agent.temperature_preference)));
         if (discomfort<0.08) discomfort=0;
@@ -564,7 +587,7 @@ void GLView::drawAgent(const Agent& agent)
 
 		//age
 		sprintf(buf2, "%i", agent.age);
-		float x = (float) agent.age/conf::MAXAGE;
+		float x = (float) agent.age/conf::MAXAGE; //will be redder the closer it is to MAXAGE
 		if(x>1)x=1;
 		RenderString(agent.pos.x-conf::BOTRADIUS*1.5, agent.pos.y+conf::BOTRADIUS*1.8+12, GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.8f, 1.0-x, 1.0-x);
 
@@ -614,28 +637,40 @@ void GLView::drawMisc()
 	sprintf(buf2, "%i", world->numAgents());
 	RenderString(world->ptr*10 + 3,-20 -mm*world->numAgents(), GLUT_BITMAP_TIMES_ROMAN_24, buf2, 0.0f, 0.0f, 0.0f);
     
-    RenderString(2500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed", 0.0f, 0.0f, 0.0f);
-    RenderString(2500, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press l to follow selected agent, o to follow oldest, g to follow most advanced gen", 0.0f, 0.0f, 0.0f);
+    RenderString(2700, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Press m for extra speed. k and l will toggle the shown cell layer. p will pause the sim", 0.0f, 0.0f, 0.0f);
+    RenderString(2700, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Press f to follow selected agent, o to follow oldest, g to follow most advanced gen", 0.0f, 0.0f, 0.0f);
 	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 0.0f, 0.0f, 0.0f);
 //	if(following!=0) RenderString(-xtranslate+(10-conf::WWIDTH/2)/scalemult, -ytranslate+(30-conf::WHEIGHT/2)/scalemult, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.5f, 0.5f, 0.5f);
 	if(world->isClosed()) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "CLOSED WORLD", 0.0f, 0.0f, 0.0f);
 }
 
-void GLView::drawFood(int x, int y, float quantity)
+void GLView::drawCell(int x, int y, float quantity)
 {
-    //draw food
-    if (drawfood) {
-		//TODO: change drawfood var into draw mode control to switch between layers
-//		float dd= 0.5;
-//		if (conf::TEMPERATURE_DISCOMFORT!=0) dd= 2.0*abs(y*conf::CZ/conf::HEIGHT - 0.5);
-        glBegin(GL_QUADS);
-        glColor3f(0.0,quantity,0.1);
-        glVertex3f(x*conf::CZ,y*conf::CZ,0);
-        glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
-        glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
-        glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
-        glEnd();
-    }
+	if (layer==1) {
+		glBegin(GL_QUADS);
+        glColor4f(0.0,quantity,0.1,0.5);
+		glVertex3f(x*conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
+		glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
+		glEnd();
+    } else if (layer==2) {
+		glBegin(GL_QUADS);
+        glColor4f(quantity,0.0,0.1,0.5);
+		glVertex3f(x*conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
+		glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
+		glEnd();
+	} else if (layer==3) {
+		glBegin(GL_QUADS);
+        glColor4f(quantity,quantity/4,0.1-0.1*quantity,0.5);
+		glVertex3f(x*conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
+		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
+		glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
+		glEnd();
+	}
 }
 
 void GLView::setWorld(World* w)

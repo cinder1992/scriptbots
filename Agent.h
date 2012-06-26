@@ -11,7 +11,7 @@
 
 class Agent
 {
-
+//IMPORTANT: if ANY variables are added/removed, you MUST check ReadWrite.cpp to see how loading and saving will be effected!!!
 public:
     Agent();
 
@@ -38,11 +38,12 @@ public:
 
     float spikeLength;
     int age;
+	int species; //if two bots are of significantly different species, then they can't crossover
 
     bool spiked;    
     
-    std::vector<float> in; //input: 2 eyes, sensors for R,G,B,proximity each, then Sound, Smell, Health
-    std::vector<float> out; //output: Left, Right, R, G, B, SPIKE
+    std::vector<float> in; //input: 4 eyes, sensors for R,G,B each, Sound, Smell, Health, Temp discomfort, 
+    std::vector<float> out; //output: Left, Right forward motion, R, G, B, SPIKE, Share, Brainmod
 
     float repcounter; //when repcounter gets to 0, this bot reproduces
 	float metabolism; //rate modifier for food to repcounter conversion
@@ -76,17 +77,12 @@ public:
     std::vector<float> eyefov; //field of view for each eye
     std::vector<float> eyedir; //direction of each eye
     
-//    DWRAONBrain brain; //THE BRAIN!!!!
-//    AssemblyBrain brain;
+	//THE BRAIN!!!!
     MLPBrain brain;
     
     //will store the mutations that this agent has from its parent
     //can be used to tune the mutation rate
     std::vector<std::string> mutations;
-
-	//save bot. Obvious use, primary function in saveWORLD function
-	void saveAgent(FILE *fs);
-	void loadAgent(FILE *fl);
 };
 
 #endif // AGENT_H

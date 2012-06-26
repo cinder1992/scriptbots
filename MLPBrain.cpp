@@ -11,8 +11,10 @@ MLPBox::MLPBox()
 
     //constructor
     for (int i=0;i<CONNS;i++) {
-        w[i]= randf(-1,1);
-        if(randf(0,1)<0.5 && i<BRAINSIZE-OUTPUTSIZE) w[i]=0; //make brains sparse (except for the outputs)
+        w[i]= randf(-2,2);
+		if(w[i]<-1) w[i]= -1;
+		if(w[i]>1) w[i]= 1; //make equal valued connections more frequent
+        if(randf(0,1)<0.6 && i<BRAINSIZE-OUTPUTSIZE) w[i]=0; //make brains sparse (except for the outputs)
         
         id[i]= randi(0,BRAINSIZE);
         if (randf(0,1)<0.2) id[i]= randi(0,INPUTSIZE); //20% of the brain AT LEAST should connect to input.
@@ -70,7 +72,7 @@ void MLPBrain::tick(vector< float >& in, vector< float >& out)
 		if (i<INPUTSIZE) { //take first few boxes and set their out to in[]. (no need to do these separately, since thay are first)
             abox->out= in[i];
 		} else { //then do a dynamics tick and set all targets
-			float acc=0;
+			float acc=abox->bias;
 			for (int j=0;j<CONNS;j++) {
 				int idx=abox->id[j];
 				int type = abox->type[j];
@@ -81,25 +83,19 @@ void MLPBrain::tick(vector< float >& in, vector< float >& out)
 					val*=10;
 				}
 
-				if (j==CONNS-1) abox->w[j]= 10*(out[9]-0.5);//last connection is affected by to the 10th output, choice
-	            
-				acc+= val*abox->w[j];
+				if (j==CONNS-1) acc+= val*abox->w[j]*(out[9]-0.5);//last connection is affected by to the 10th output, choice
+				else acc+= val*abox->w[j];
 
-				if (val>0.6 && randf(0,1)<0.001) { // experimental weight feedback adjusting, both positive and negative
-					abox->w[j]-= 0.0001;
-					if (abox->w[j]>100) abox->w[j]= 100;
-				} else if (val<=0.3 && randf(0,1)<0.001) {
-					abox->w[j]-= 0.0001;
+				if (out[10]>0.5) {
+					//if the stimulant output is active,
+					abox->w[j]+= 0.0001*(2*val-1); //if val > 0.5, it makes the weight stronger; else if val < 0.5 it weakens
 				}
-				if (abox->w[j]<0) abox->w[j]= 0;
-
 			}
 			
 			acc*= abox->gw;
-			acc+= abox->bias;
 	        
 			//put through sigmoid
-			acc= 1.0/(1.0+exp(-acc)); //no. This destroys possibility of absolute on or absolute off neurons. Just cap it.
+			acc= 1.0/(1.0+exp(-acc));
 	        
 			abox->target= cap(acc);
 		}
@@ -184,8 +180,6 @@ void MLPBrain::mutate(float MR, float MR2)
 
 MLPBrain MLPBrain::crossover(const MLPBrain& other)
 {
-    //this could be made faster by returning a pointer
-    //instead of returning by value
     MLPBrain newbrain(*this);
     
     for (int i=0;i<newbrain.boxes.size(); i++) {
