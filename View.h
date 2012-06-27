@@ -6,7 +6,7 @@ class View
 {
 public:
     virtual void drawAgent(const Agent &a) = 0;
-    virtual void drawFood(int x, int y, float quantity) = 0;
+    virtual void drawCell(int x, int y, float quantity) = 0;
     virtual void drawMisc() = 0;
 };
 
