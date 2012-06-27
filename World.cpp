@@ -718,8 +718,9 @@ void World::writeReport() //(GPA)
 		else if(agents[i].age>=(conf::MAXAGE)) age5_5th++;
 
 		for(int s=0;s<species.size();s++){
-			if(abs(species[s]-agents[i].species)<=conf::MAXDEVIATION){
+			if(abs(species[s]-agents[i].species)>conf::MAXDEVIATION){
 				species.push_back(agents[i].species);
+				break;
 			}
 		}
 	}
