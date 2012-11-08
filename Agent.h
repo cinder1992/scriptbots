@@ -21,7 +21,6 @@ public:
     
     void tick();
     Agent reproduce(Agent that, float MR, float MR2);
-    Agent crossover(const Agent &other);
     
     Vector2f pos;
 
@@ -35,6 +34,7 @@ public:
     float w1; //wheel speeds
     float w2;
     bool boost; //is this agent boosting
+	float jump; //what "height" this bot is at after jumping
 
     float spikeLength;
     int age;
@@ -68,11 +68,11 @@ public:
     float MUTRATE2; //how significant are they?
     float temperature_preference; //what temperature does this agent like? [0 to 1]
     
-    float smellmod;
-    float soundmod;
-    float hearmod;
-    float eyesensmod;
-    float bloodmod;
+	float eyesensmod;
+	float smellmod;
+	float soundmod;
+	float hearmod;
+	float bloodmod;
     
     std::vector<float> eyefov; //field of view for each eye
     std::vector<float> eyedir; //direction of each eye

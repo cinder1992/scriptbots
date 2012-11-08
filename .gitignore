@@ -4,3 +4,7 @@
 Debug/
 Release/
 build/
+*.SCB
+*.dll
+*.lib
+*.vcproj

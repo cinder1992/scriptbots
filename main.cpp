@@ -28,12 +28,12 @@ int main(int argc, char **argv) {
 	//GLUT SETUP
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-//	glEnable(GL_BLEND);
-//	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glutInitWindowPosition(30,30);
 	glutInitWindowSize(conf::WWIDTH,conf::WHEIGHT);
 	glutCreateWindow("Scriptbots");
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glutDisplayFunc(gl_renderScene);
 	glutIdleFunc(gl_handleIdle);
 	glutReshapeFunc(gl_changeSize);

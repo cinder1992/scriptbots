@@ -1,3 +1,29 @@
+11/7/12 changes
++ Added Hazard layer: injures bots, instant hazard events, and slow bot deposit of hazard waste.
++ Added Jump: output that sets a counter for "height" that slowly decreases over time. Jumping bots cannot be attacked, cannot change direction
+  or angle, and cannot interact with cells (plants, meat, or hazards). Automatically locks in boost if active when jump is activated.
+  Jumping bots do not interact physically with other bots, but can still attack others
++ Added saving and loading of hazard layer, and of jump "height" of bots
++ Added meat count, hazard count, and hybrid bots, omnivore bots, and max omnivore generation count to report
++ Code for blood sensor detecting meat in layer form added, but currently unused
++ Added stomach type multiplier for dead bot to meat conversion. Carnivores will give only half of what an otherwise identical herbivore
+  would give. Prevents self-sufficient carnivores
++ Added Debug Mode: reports mouse events, visually displays what the selected agent can see with all eyes. Can be toggled via menu
+- Eye FOV are limited to 180 degrees; anything greater doesn't make sense and starts giving bots unfair advantages
+- Age counts removed from reports
+- Metabolism no longer effects health loss
+= Cell saving and loading changed; no longer requires more reading variables, but now takes up to 3x the number of lines from previous versions.
+  Old saves are incompatable
+= Adjusted init health of spawned bots to increase turnover rate and give more of a challenge to species
+= Reduced "jumpiness" of "follow healthiest agent" function
+= Changed box weight adjusting code (again). Hopefully this time the bots will exhibit some learning behavior
+= Fixed incorrect save data bug, -1 selected agent id bug, and other tune ups to ReadWrite module
+= Fixed species reporting. A species is counted in reporting only when there are 3 or more members
+= Fixed food overpopulation of edges bug
+= Continued plant, meat, and hazard balancing
+* Notable bug: bots turn instantly when jump= 0, making the action look ugly. Needs work
+* FPS has been reduced to less than 200 at program init, settings as is, on an intel i3, 2.1GHz Windows machine. This is annoying
+
 6/26/12 changes
 + Added player control of agents: use "w,a,s,d" keys to control the selected agent. Is toggleable ("w,a,s,d" keys can activate, 
   menu option can toggle to either state)

@@ -83,13 +83,11 @@ void MLPBrain::tick(vector< float >& in, vector< float >& out)
 					val*=10;
 				}
 
-				if (j==CONNS-1) acc+= val*abox->w[j]*(out[9]-0.5);//last connection is affected by to the 10th output, choice
-				else acc+= val*abox->w[j];
+				float stim= out[10];
+				abox->w[j]+= conf::LEARNRATE*stim*(abox->oldout-(1-val)); //modify weights based on matching old output and new input, if stimulant is active
 
-				if (out[10]>0.5) {
-					//if the stimulant output is active,
-					abox->w[j]+= 0.0001*(2*val-1); //if val > 0.5, it makes the weight stronger; else if val < 0.5 it weakens
-				}
+				if (j==CONNS-1) acc+= val*abox->w[j]*(out[9]*2-1);//last connection is affected by to the 10th output, choice
+				else acc+= val*abox->w[j];
 			}
 			
 			acc*= abox->gw;

@@ -1,10 +1,10 @@
 #define INPUTSIZE 21
-#define OUTPUTSIZE 11
+#define OUTPUTSIZE 12
 #define NUMEYES 4
-#define BRAINSIZE 75
+#define BRAINSIZE 60
 #define CONNS 5
-#define LAYERS 3
-#define CURRENTVERSION 4
+#define LAYERS 4
+#define CURRENTVERSION 5
 
 #ifndef SETTINGS_H
 #define SETTINGS_H
@@ -18,7 +18,7 @@ namespace conf {
 	
 	const int CZ = 50; //cell size in pixels, for food squares. Should divide well into Width Height
 	const int MINFOOD = 0; //Minimum number of food cells which must have food durring simulation. 0 = off
-	const int INITFOOD = 2000; //initial number of full food cells
+	const int INITFOOD = 3000; //initial number of full food cells
 
 	const int REPORTS_PER_EPOCH = 10; // number of times to record data per epoch. 0 for off. (David Coleman)
 
@@ -27,38 +27,44 @@ namespace conf {
 	const float BOTSPEED= 0.3;
 	const float SPIKESPEED= 0.005; //how quickly can attack spike go up?
 	const float SPIKEMULT= 1; //essentially the strength of every spike impact
+	const float GRAVITYACCEL= 0.0098; //how fast a bot will fall after jumping [0= weightless (I don't recommend), 0.5 or more= super-gravity
 	const int BABIES=2; //number of babies per agent when they reproduce
 	const float BOOSTSIZEMULT=2; //how much boost do agents get? when boost neuron is on
-	const float REPRATE=10; //amount of food required to be consumed for an agent to reproduce
-	const float MAXMETABOLISM=6; //it is what it says. Metabolism is limited to [0,this]
+	const float REPRATE=7; //amount of food required to be consumed for an agent to reproduce
+	const float MAXMETABOLISM=4; //it is what it says. Metabolism is limited to [0,this]
 	const int MAXAGE=1000; //Age at which the full AGEDAMAGE amount is given to an agent
 	const float AGEDAMAGE=0.0001;
 	const float MAXDEVIATION=5; //maximum difference a crossover reproducing agent will be willing to tolerate
 
-	const float DIST= 300; //how far can the eyes see on each bot?
+	const float DIST= 250; //how far can the senses can detect other bots or cells
 	const float TEMPERATURE_DISCOMFORT = 0.002; //how quickly does health drain in nonpreferred temperatures (0= disabled. 0.005 is decent value)
 	const float REPMULT = 1; //when a body of dead animal is eaten, how much of it goes toward increasing birth counter for surrounding bots?
 	const float METAMUTRATE1= 0.002; //what is the change in MUTRATE1 and 2 on reproduction? lol
-	const float METAMUTRATE2= 0.05;
+	const float METAMUTRATE2= 0.01;
+	const float LEARNRATE= 0.0005; //how quickly a conn weight can change from use
 
 	const float FOODINTAKE= 0.002; //how much plant food an agent can consume per tick?
-	const float FOODGROWTH= -0.000001; //how much does food grow/decay on a square?
-	const float FOODWASTE= 0.1; //how much food disapears if agent eats?
+	const float FOODGROWTH= -0.000001; //how much does food grow/decay on a cell which already has food?
+	const float FOODWASTE= 0.12; //how much food disapears if agent eats?
 	const float FOODMAX= 0.5; //how much food per cell can there be at max?
-	const int FOODADDFREQ= 200; //how often does random square get to full food?
-	const float FOODSPREAD= 0.00003; //probability of a food cell seeding food to a nearby cell per tick
+	const int FOODADDFREQ= 300; //how often does random square get to full food?
+	const float FOODSPREAD= 0.00004; //probability of a food cell seeding food to a nearby cell per tick
 	const int FOODRANGE= 2; //distance that single cell of food can seed. in cells.
 
-	const float MEATINTAKE= 0.02; //how much meat an agent can consume per tick?
-	const float MEATDECAY= 0.000001; //how much meat decays/grows on a square? through MEATDECAY/[meat_present]
-	const float MEATWASTE= 0.3; //how much meat disapears if agent eats?
+	const float MEATINTAKE= 0.01; //how much meat an agent can consume per tick?
+	const float MEATDECAY= 0.0000002; //how much meat decays/grows on a cell? through MEATDECAY/[meat_present]
+	const float MEATWASTE= 0.2; //how much meat disapears if agent eats?
 	const float MEATMAX= 0.5; //how much meat per cell can there be at max?
 	const float MEATVALUE= 1; //how much meat a bot's body is worth? in range [0,1]
 
+	const int HAZARDFREQ= 100; //how often an instant hazard appears?
+	const float HAZARDDECAY= 0.00001; //how much non-event hazard decays/grows on a cell per tick?
+	const float HAZARDDEPOSIT= 0.0005; //how much hazard is placed by a bot per tick?
+	const float HAZARDDAMAGE= 0.001; //how much health a bot looses while on a filled hazard cell per tick?
+	const float HAZARDMAX= 0.5; //how much hazard per cell can there be at max? more than 9/10 of this qualifies as an instant hazard
+
 	const float FOODTRANSFER= 0.001; //how much is transfered between two agents trading food? per iteration
 	const float FOOD_SHARING_DISTANCE= 50; //how far away is food shared between bots?
-	
-	const float FOOD_DISTRIBUTION_RADIUS=100; //when bot is killed, how far is its body distributed?
 	}
 
 #endif

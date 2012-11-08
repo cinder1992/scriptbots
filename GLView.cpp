@@ -106,7 +106,7 @@ void GLView::changeSize(int w, int h)
 
 void GLView::processMouse(int button, int state, int x, int y)
 {
-	//printf("MOUSE EVENT: button=%i state=%i x=%i y=%i\n", button, state, x, y);
+	if(world->isDebug()) printf("MOUSE EVENT: button=%i state=%i x=%i y=%i\n", button, state, x, y);
 	
 	//have world deal with it. First translate to world coordinates though
 	if(button==0){
@@ -122,7 +122,7 @@ void GLView::processMouse(int button, int state, int x, int y)
 
 void GLView::processMouseActiveMotion(int x, int y)
 {
-	//printf("MOUSE MOTION x=%i y=%i, %i %i %i\n", x, y, downb[0], downb[1], downb[2]);
+	if(world->isDebug()) printf("MOUSE MOTION x=%i y=%i, %i %i %i\n", x, y, downb[0], downb[1], downb[2]);
 	if (downb[0]==1) {
 		//left mouse button drag: pan around
 		xtranslate += (x-mousex)/scalemult;
@@ -177,7 +177,8 @@ void GLView::menu(int key) //(GPA)
 		//begin glut for menu changes. Note that it can only show the "next" layer
 		if (layer==0) glutChangeToMenuEntry(2, "Show: Plant Food", 'l');
 		else if (layer==1) glutChangeToMenuEntry(2, "Show: Meat Food", 'l');
-		else if (layer==2) glutChangeToMenuEntry(2, "Show: Temperature", 'l');
+		else if (layer==2) glutChangeToMenuEntry(2, "Show: Hazards", 'l');
+		else if (layer==3) glutChangeToMenuEntry(2, "Show: Temperature", 'l');
 		else if (layer==LAYERS) glutChangeToMenuEntry(2, "Show: None", 'l');
 		else glutChangeToMenuEntry(2, "Show: next layer",'l');
 		glutSetMenu(m_id);
@@ -237,15 +238,25 @@ void GLView::menu(int key) //(GPA)
 		else glutChangeToMenuEntry(5, "Control Agent", 999);
 		glutSetMenu(m_id);
 	}else if (key==1000) { //menu only, save world
+		printf("SAVING WORLD\n");
 		printf("Type a valid file name (ex: WORLD.SCB): ");
 		scanf("%s", filename);
 		savehelper->saveWorld(world, xtranslate, ytranslate, filename);
 	}else if (key==1001) { //menu only, load world
+		printf("LOADING WORLD\n");
 		printf("Type a valid file name (ex: WORLD.SCB): ");
 		scanf("%s", filename);
 		//reset first
 		world->reset();
 		savehelper->loadWorld(world, xtranslate, ytranslate, filename);
+	}else if (key==1005) { //menu only, debug mode
+		world->setDebug( !world->isDebug() );
+		glutGet(GLUT_MENU_NUM_ITEMS);
+		if (world->isDebug()){
+			glutChangeToMenuEntry(18, "Exit Debug Mode", 1005);
+			printf("Entered Debug Mode\n");
+		} else glutChangeToMenuEntry(18, "Enter Debug Mode", 1005);
+		glutSetMenu(m_id);
 	} else {
 		printf("Unknown key pressed: %i\n", key);
 	}
@@ -286,10 +297,10 @@ void GLView::glCreateMenu(void)
 {
 	m_id = glutCreateMenu(gl_menu); //right-click context menu
 	glutAddMenuEntry("Fast Mode (m)", 'm');
-	glutAddMenuEntry("Show: Meat Food (k,l)", 'l');
+	glutAddMenuEntry("Show: Meat Food (k,l)", 'l'); //line contains mode-specific text, see menu function above
 	glutAddMenuEntry("Pause (p)", 'p');
-	glutAddMenuEntry("Close World (c)", 'c');
-	glutAddMenuEntry("Control Selected (w,a,s,d)", 999);
+	glutAddMenuEntry("Close World (c)", 'c'); //line contains mode-specific text, see menu function above
+	glutAddMenuEntry("Control Selected (w,a,s,d)", 999); //line contains mode-specific text, see menu function above
 	glutAddMenuEntry("Follow Selected (f)", 'f');
 	glutAddMenuEntry("Follow Oldest (o)", 'o');
 	glutAddMenuEntry("Follow Highest Gen (g)", 'g');
@@ -302,6 +313,7 @@ void GLView::glCreateMenu(void)
 	glutAddMenuEntry("Save World",1000);
 	glutAddMenuEntry("Load World",1001);
 	glutAddMenuEntry("-------------------",-1);
+	glutAddMenuEntry("Enter Debug Mode", 1005); //line contains mode-specific text, see menu function above
 	glutAddMenuEntry("Reset Agents (tab)", 9);
 	glutAddMenuEntry("Exit (esc)", 27);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
@@ -367,12 +379,13 @@ void GLView::drawAgent(const Agent& agent)
 	float n;
 	float r= conf::BOTRADIUS;
 	float rp= conf::BOTRADIUS+2.5;
+
 	//handle selected agent
 	if (agent.selectflag>0) {
 
 		//draw selection
 		glBegin(GL_POLYGON);
-		glColor3f(1,1,1);
+		glColor4f(1,1,1,0.5);
 		drawCircle(agent.pos.x, agent.pos.y, conf::BOTRADIUS+5);
 		glEnd();
 
@@ -483,7 +496,7 @@ void GLView::drawAgent(const Agent& agent)
 	//draw indicator of this agent... used for various events
 	 if (agent.indicator>0) {
 		 glBegin(GL_POLYGON);
-		 glColor3f(agent.ir,agent.ig,agent.ib);
+		 glColor4f(agent.ir,agent.ig,agent.ib,0.5);
 		 drawCircle(agent.pos.x, agent.pos.y, conf::BOTRADIUS+((int)agent.indicator));
 		 glEnd();
 	 }
@@ -509,9 +522,10 @@ void GLView::drawAgent(const Agent& agent)
 
 	glBegin(GL_LINES);
 	//outline
+	glColor3f(0,0,0);
 	if (agent.boost) glColor3f(0.8,0,0); //draw boost as red outline
-	else glColor3f(0,0,0);
-
+	if (agent.jump>0) glColor3f(0,0,0.8); //draw jumping as blue outline
+	
 	for (int k=0;k<17;k++)
 	{
 		n = k*(M_PI/8);
@@ -524,6 +538,17 @@ void GLView::drawAgent(const Agent& agent)
 	glVertex3f(agent.pos.x,agent.pos.y,0);
 	glVertex3f(agent.pos.x+(3*r*agent.spikeLength)*cos(agent.angle),agent.pos.y+(3*r*agent.spikeLength)*sin(agent.angle),0);
 	glEnd();
+
+	//debug sight lines
+	for (int i=0;i<world->linesA.size();i++) {
+		glBegin(GL_LINES);
+		glColor3f(1,1,1);
+		glVertex3f(world->linesA[i].x,world->linesA[i].y,0);
+		glVertex3f(world->linesB[i].x,world->linesB[i].y,0);
+		glEnd();
+	}
+	world->linesA.resize(0);
+	world->linesB.resize(0);
 
 	if(scalemult > .3) {//hide extra visual data if really far away
 		//health
@@ -641,31 +666,23 @@ void GLView::drawMisc()
 	RenderString(2700, -80, GLUT_BITMAP_TIMES_ROMAN_24, "Right click the world for actions. 'm' disables drawing, 'p' pauses the sim.", 0.0f, 0.0f, 0.0f);
 	RenderString(2700, -20, GLUT_BITMAP_TIMES_ROMAN_24, "Try clicking on a bot and using 'w,a,s,d' to control it.", 0.0f, 0.0f, 0.0f);
 	if(paused) RenderString(3500, -80, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED", 0.0f, 0.0f, 0.0f);
-//	if(following!=0) RenderString(-xtranslate+(10-conf::WWIDTH/2)/scalemult, -ytranslate+(30-conf::WHEIGHT/2)/scalemult, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.5f, 0.5f, 0.5f);
+	if(following!=0) RenderString(-xtranslate+(10-conf::WWIDTH/2)/scalemult, -ytranslate+(30-conf::WHEIGHT/2)/scalemult, GLUT_BITMAP_TIMES_ROMAN_24, "FOLLOWING", 0.5f, 0.5f, 0.5f);
 	if(world->isClosed()) RenderString(4000, -80, GLUT_BITMAP_TIMES_ROMAN_24, "CLOSED WORLD", 0.0f, 0.0f, 0.0f);
 }
 
 void GLView::drawCell(int x, int y, float quantity)
 {
-	if (layer==1) {
+	if (layer!=0) { //none: white
 		glBegin(GL_QUADS);
-		glColor3f(0.0,quantity,0.1);
-		glVertex3f(x*conf::CZ,y*conf::CZ,0);
-		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
-		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
-		glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
-		glEnd();
-	} else if (layer==2) {
-		glBegin(GL_QUADS);
-		glColor3f(quantity,0.0,0.1);
-		glVertex3f(x*conf::CZ,y*conf::CZ,0);
-		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
-		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);
-		glVertex3f(x*conf::CZ,y*conf::CZ+conf::CZ,0);
-		glEnd();
-	} else if (layer==3) {
-		glBegin(GL_QUADS);
-		glColor3f(quantity,quantity/4,0.1-0.1*quantity);
+		if (layer==1) { //plant food: green w/ navy blue background
+			glColor4f(0.0,quantity,0.1,0.5);
+		} else if (layer==2) { //meat food: red/burgundy w/ navy blue bg
+			glColor4f(quantity,0.0,0.1,0.5);
+		} else if (layer==3) { //hazards: purple/magenta w/ navy blue bg
+			glColor4f(quantity,0.0,quantity*0.9+0.1,0.5);
+		} else if (layer==4) { //temperature: orange for 1, navy blue for 0
+			glColor4f(quantity,quantity/4,0.1-0.1*quantity,0.5);
+		}
 		glVertex3f(x*conf::CZ,y*conf::CZ,0);
 		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ,0);
 		glVertex3f(x*conf::CZ+conf::CZ,y*conf::CZ+conf::CZ,0);

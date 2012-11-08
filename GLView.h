@@ -4,7 +4,6 @@
 
 #include "View.h"
 #include "World.h"
-//#include "ReadWrite.h"
 
 class GLView;
 
@@ -55,8 +54,9 @@ private:
     World *world;
     bool paused; //are we paused?
     bool draw; //are we drawing?
+	bool debug; //are we debugging?
     int skipdraw; //are we skipping some frames?
-	int layer; //what cell layer is currently active? 0= off, 1= plant food, 2= meat, 3= temperature
+	int layer; //what cell layer is currently active? 0= off, 1= plant food, 2= meat, 3= hazards, 4= temperature
     char buf[100];
     char buf2[10];
     int modcounter; //tick counter

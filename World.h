@@ -18,6 +18,12 @@ public:
     
     bool isClosed() const;
     void setClosed(bool close);
+
+	//debug stuff
+	bool isDebug() const;
+	void setDebug(bool state);
+	std::vector<Vector2f> linesA;
+	std::vector<Vector2f> linesB;
     
     /**
      * Returns the number of herbivores and 
@@ -30,6 +36,7 @@ public:
     int numAgents() const;
 	int numFood() const;
 	int numMeat() const;
+	int numHazards() const;
 	int numHybrids() const;
     int epoch() const;
     
@@ -60,8 +67,9 @@ public:
     int idcounter;
 
 	std::vector<Agent> agents;
-	//cells; replaces food layer, can be expanded (3 layers currently)
-	//[LAYER]: 0= plant food, 1= meat, 2= temperature (poison, water/land, light layers also possible with very little coding)
+	//cells; replaces food layer, can be expanded (4 layers currently)
+	//[LAYER]: 0= plant food, 1= meat, 2= hazard (poison, waste, events) , 3= temperature
+	//(water/land, light layers also possible with very little coding)
 	int CW;
 	int CH;
 	int cx;
@@ -81,6 +89,7 @@ private:
 	float capCell(float a, float top) const;
 
     bool CLOSED; //if environment is closed, then no random bots or food are added per time interval
+	bool DEBUG; //if debugging, collect additional data, print more feedback, and draw extra info
 };
 
 #endif // WORLD_H

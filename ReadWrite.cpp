@@ -46,12 +46,35 @@ ReadWrite::ReadWrite()
 	ourfile= "WORLD.SCB";
 }
 
+/*void ReadWrite::getOurFile() const
+{
+	// Displays an OpenFileDialog so the user can select a Cursor.
+	OpenFileDialog ^ openFileDialog1 = new OpenFileDialog();
+	openFileDialog1->Filter = "ScriptBots Saves|*.SCB";
+	openFileDialog1->Title = "Select a save file";
+
+	// Show the Dialog.
+	// If the user clicked OK in the dialog and
+	// a .SCB file was selected, open it.
+	if (openFileDialog1->ShowDialog() == System::Windows::Forms::DialogResult::OK)
+	{
+		// Assign ourfile to be the name of this file
+		ourfile= 
+	}
+}i*/
+
 void ReadWrite::saveWorld(World *world, float xpos, float ypos, const char *filename)
 {
+	//if no filename given, use default
+	if(!filename){
+		filename= ourfile;
+		printf("CAUTION: No filename given. Loading default %s instead.\n", ourfile);
+	}		
+	
 	//check the filename given to see if it exists yet
 	FILE* ck = fopen(filename, "r");
 	if(ck){
-		printf("CAUTION: the filename specified (%s) already exists! Nothing I can do atm, sorry\n", filename);
+		printf("CAUTION: %s already exists! Nothing I can do atm, sorry.\n", filename);
 	}
 	//open save file, write over any previous
 	FILE* fs = fopen(filename, "w");
@@ -71,42 +94,44 @@ void ReadWrite::saveWorld(World *world, float xpos, float ypos, const char *file
 	fprintf(fs,"epoch= %i\n", world->current_epoch);
 	fprintf(fs,"mod= %i\n", world->modcounter);
 	fprintf(fs,"xpos= %f\n", xpos);
-	fprintf(fs,"ypos= %f\n", ypos);
-	fprintf(fs, "<cells>\n");
-	for(int cx=0;cx<world->CW;cx++){
+	fprintf(fs,"ypos= %f\n", ypos); //GLView xtranslate and ytranslate
+	for(int cx=0;cx<world->CW;cx++){ //start with the layers
 		for(int cy=0;cy<world->CH;cy++){
 			float food= world->cells[0][cx][cy];
 			float meat= world->cells[1][cx][cy];
-			if(food>0 || meat>0){
-				fprintf(fs, "%i %i = %f %f\n", cx, cy, food, meat);
+			float hazard= world->cells[2][cx][cy];
+			if(food>0 || meat>0 || hazard>0){ //only cells which have data on at least one layer are written, because all cells are set to zero on world reset
+				fprintf(fs, "<cell>\n"); //signals the writting of a cell
+				fprintf(fs, "cx= %i\n", cx);
+				fprintf(fs, "cy= %i\n", cy);
+				if (food>0) fprintf(fs, "food= %f\n", food); //to further save space, we needn't report a value of a layer for the cell if it's zero
+				if (meat>0) fprintf(fs, "meat= %f\n", meat);
+				if (hazard>0) fprintf(fs, "hazard= %f\n", hazard);
+				fprintf(fs,"</cell>\n");
 			}
 		}
 	}
-	fprintf(fs,"</cells>\n");
 	int mini= -1;
 	for(int i=0;i<world->agents.size();i++) {
-		Agent* a= &world->agents[i]; //??? &
+		// here we save all agents. All simulation-significant data must be stored, from the pos and angle, to the change in food the bot was experiencing
+		Agent* a= &world->agents[i];
 
-		int hybridtemp= 0;
-		int boosttemp= 0;
-		if(a->hybrid) hybridtemp= 1;
-		if(a->boost) boosttemp= 1;
-
-		fprintf(fs, "<agent>\n"); //signals the creation of a new agent...
-	//	fprintf(fs, "id= %i\n", a->id); //id... (not loaded)
-		fprintf(fs, "posx= %f\nposy= %f\n", a->pos.x, a->pos.y); //position...
-		fprintf(fs, "angle= %f\n", a->angle); //angle...
+		fprintf(fs, "<agent>\n"); //signals the writing of a new agent
+	//	fprintf(fs, "id= %i\n", a->id); //id not loaded
+		fprintf(fs, "posx= %f\nposy= %f\n", a->pos.x, a->pos.y);
+		fprintf(fs, "angle= %f\n", a->angle);
 		fprintf(fs, "health= %f\n", a->health);
 	//	fprintf(fs, "red= %f\ngre= %f\nblu= %f\n", a->red, a->gre, a->blu);
 	//	fprintf(fs, "w1= %f\nw2= %f\n", w1, w2);
-	//	fprintf(fs, "boost= %i\n", boosttemp);
+	//	fprintf(fs, "boost= %i\n", (int) a->boost);
 		fprintf(fs, "herbivore= %f\n", a->herbivore);
 		fprintf(fs, "species= %i\n", a->species);
 		fprintf(fs, "spike= %f\n", a->spikeLength);
+		fprintf(fs, "jump= %f\n", a->jump); //version 6 addition
 		fprintf(fs, "dfood= %f\n", a->dfood);
 		fprintf(fs, "age= %i\n", a->age);
 		fprintf(fs, "gen= %i\n", a->gencount);
-		fprintf(fs, "hybrid= %i\n", hybridtemp);
+		fprintf(fs, "hybrid= %i\n", (int) a->hybrid);
 		fprintf(fs, "cl1= %f\ncl2= %f\n", a->clockf1, a->clockf2);
 		fprintf(fs, "smellmod= %f\n", a->smellmod);
 		fprintf(fs, "soundmod= %f\n", a->soundmod);
@@ -128,10 +153,10 @@ void ReadWrite::saveWorld(World *world, float xpos, float ypos, const char *file
 	//	fprintf(fs, "ir= %f\nig= %f\nib= %f\n", a->ir, a->ig, a->ib);
 	//	fprintf(fs, "give= %f\n", a->give);
 		fprintf(fs, "mutrate1= %f\nmutrate2= %f\n", a->MUTRATE1, a->MUTRATE2);
-		fprintf(fs, "<brain>\n"); //signals the creation and loading of the brain
+		fprintf(fs, "<brain>\n"); //signals the writing of the brain (more for organization than proper loading)
 
 		for(int b=0;b<BRAINSIZE;b++){
-			fprintf(fs, "<box>\n"); //signals the loading of a specific numbered box
+			fprintf(fs, "<box>\n"); //signals the writing of a specific numbered box
 			fprintf(fs, "box#= %i\n", b);
 			fprintf(fs, "kp= %f\n", a->brain.boxes[b].kp);
 			fprintf(fs, "bias= %f\n", a->brain.boxes[b].bias);
@@ -140,7 +165,7 @@ void ReadWrite::saveWorld(World *world, float xpos, float ypos, const char *file
 			fprintf(fs, "out= %f\n", a->brain.boxes[b].out);
 			fprintf(fs, "oldout= %f\n", a->brain.boxes[b].oldout);
 			for(int c=0;c<CONNS;c++){
-				fprintf(fs, "<conn>\n"); //signals the loading of a specific connection for a specific box
+				fprintf(fs, "<conn>\n"); //signals the writing of a specific connection for a specific box
 				fprintf(fs, "conn#= %i\n", c);
 				fprintf(fs, "type= %i\n", a->brain.boxes[b].type[c]);
 				fprintf(fs, "w= %f\n", a->brain.boxes[b].w[c]);
@@ -153,7 +178,7 @@ void ReadWrite::saveWorld(World *world, float xpos, float ypos, const char *file
 		fprintf(fs, "</agent>\n"); //end of agent
 		if(a->selectflag) mini= i;
 	}
-	fprintf(fs,"selected= %i\n", mini);
+	fprintf(fs,"selected= %i\n", mini); //write down which bot was selected
 	fprintf(fs,"</world>");
 	fclose(fs);
 }
@@ -162,12 +187,10 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 {
 	char line[64], *pos;
 	char var[16];
-	char var2[16];
 	char dataval[16];
-	char dataval2[16];
-	int fxp;
-	int fyp;
-	int mode= -1;//loading mode: -1= off, 0= world, 1= food, 2= agent, 3= box, 4= connection, 5= eyes
+	int cxl;
+	int cyl;
+	int mode= -1;//loading mode: -1= off, 0= world, 1= cell, 2= agent, 3= box, 4= connection, 5= eyes
 	int versionnum= CURRENTVERSION;
 
 	Agent xa; //mock agent. should get moved and deleted after loading
@@ -178,24 +201,32 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 	int i; //integer buffer
 	float f; //float buffer
 
+	//if no filename given, use default
+	if(!filename){
+		filename= ourfile;
+		printf("CAUTION: No filename given. Loading default %s instead.\n", ourfile);
+	}
+
+	//version check.
+	if (versionnum!=CURRENTVERSION){
+		printf("CAUTION: version number of the save file (%i) does not match current version number (%i). World data may be incompatable and/or bots may not behave as expected!\n", versionnum, CURRENTVERSION);
+	}
+
 	FILE *fl;
 	fl= fopen(filename, "r");
 	if(fl){
 		while(!feof(fl)){
 			fgets(line, sizeof(line), fl);
 			pos= strtok(line,"\n");
-			if(mode!=1){
-				sscanf(line, "%s%s", var, dataval);
-			}else{ //special case for cell loading
-				sscanf(line, "%s%s%*c%*c%s%s", var, var2, dataval, dataval2);
-			}
+			sscanf(line, "%s%s", var, dataval);
+			//version 5 (7/2012) has changed cell loading to follow the same pattern, so dataval2 and var2 have been removed
 
-			if(mode==-1){
+			if(mode==-1){ //mode @ -1 = off
 				if(strcmp(var, "<world>")==0){ //strcmp= 0 when the arguements equal
 					//if we find a <world> tag, enable world loading. simple
 					mode= 0;
 				}
-			}else if(mode==0){
+			}else if(mode==0){ //mode @ 0 = world
 				if(strcmp(var, "version=")==0){
 					//set versionnum to dataval to check version for new/removed features
 					sscanf(dataval, "%i", &i);
@@ -239,28 +270,36 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 				}else if(strcmp(var, "selected=")==0){
 					//selected agent
 					sscanf(dataval, "%i", &i);
-					world->agents[i].selectflag= true;
-				}else if(strcmp(var, "<cells>")==0){
+					if (i>=0 && i<world->agents.size()) world->agents[i].selectflag= true;
+				}else if(strcmp(var, "<cell>")==0){ //version 5 (9/2012) has changed cell loading to follow the same pattern as that of agents
 					//cells tag activates cell reading mode
 					mode= 1;
 				}else if(strcmp(var, "<agent>")==0){
 					//agent tag activates agent reading mode
 					mode= 2;
 				}
-			}else if(mode==1){ //version 3 (6/2012) no longer allows old food data to be loaded
-				if(strcmp(var, "</cells>")==0){
-					//end_cells tag is checked for first, because of else condition
+			}else if(mode==1){ //mode @ 1 = cell
+				//version 3 (6/2012) no longer allows old food data to be loaded. Version 5 (9/2012) has changed structure of save, so old cell data is worthless
+				if(strcmp(var, "</cell>")==0){
+					//end_cell tag is checked for first, because of else condition
 					mode= 0;
-				}else{
-					sscanf(var, "%i", &fxp);
-					sscanf(var2, "%i", &fyp);
-					//set the cell values here
+				}else if(strcmp(var, "cx=")==0){
+					sscanf(dataval, "%i", &i);
+					cxl= i;
+				}else if(strcmp(var, "cy=")==0){
+					sscanf(dataval, "%i", &i);
+					cyl= i;
+				}else if(strcmp(var, "food=")==0){
 					sscanf(dataval, "%f", &f);
-					world->cells[0][fxp][fyp]= f;
-					sscanf(dataval2, "%f", &f);
-					world->cells[1][fxp][fyp]= f;
-				}
-			}else if(mode==2){
+					world->cells[0][cxl][cyl]= f;
+				}else if(strcmp(var, "meat=")==0){
+					sscanf(dataval, "%f", &f);
+					world->cells[1][cxl][cyl]= f;
+				}else if(strcmp(var, "hazard=")==0){
+					sscanf(dataval, "%f", &f);
+					world->cells[2][cxl][cyl]= f;
+				}				
+			}else if(mode==2){ //mode @ 2 = agent
 				if(strcmp(var, "</agent>")==0){
 					//end_agent tag is checked for, and when found, copies agent xa
 					mode= 0;
@@ -290,6 +329,10 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 				}else if(strcmp(var, "spike=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.spikeLength= f;
+				}else if(strcmp(var, "jump=")==0){
+					//new as of version 5 (9/2012)
+					sscanf(dataval, "%f", &f);
+					xa.jump= f;
 				}else if(strcmp(var, "dfood=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.dfood= f;
@@ -327,9 +370,6 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 				}else if(strcmp(var, "metabolism=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.metabolism= f;
-//				}else if(strcmp(var, "reprate=")==0){
-//					sscanf(dataval, "%f", &f);
-//					xa.reprate= f; //reprate function removed from bots in version 5/2012
 				}else if(strcmp(var, "repcounter=")==0){
 					sscanf(dataval, "%f", &f);
 					xa.repcounter= f;
@@ -352,7 +392,7 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 				}else if(strcmp(var, "<box>")==0){
 					mode= 3;
 				}
-			}else if(mode==5){
+			}else if(mode==5){ //mode @ 5 = eye (of agent)
 				if(strcmp(var, "</eye>")==0){
 					mode= 2;
 				}else if(strcmp(var, "eye#=")==0){
@@ -365,7 +405,7 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 					sscanf(dataval, "%f", &f);
 					xa.eyefov[eyenum]= f;
 				}
-			}else if(mode==3){
+			}else if(mode==3){ //mode @ 3 = brain box (of agent)
 				if(strcmp(var, "</box>")==0){
 					mode= 2;
 				}else if(strcmp(var, "box#=")==0){
@@ -392,7 +432,7 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 				}else if(strcmp(var, "<conn>")==0){
 					mode= 4;
 				}
-			}else if(mode==4){
+			}else if(mode==4){ //mode @ 4 = connection (of brain box of agent)
 				if(strcmp(var, "</conn>")==0){
 					mode= 3;
 				}else if(strcmp(var, "conn#=")==0){
@@ -411,12 +451,8 @@ void ReadWrite::loadWorld(World *world, float &xtranslate, float &ytranslate, co
 			}
 		}
 		fclose(fl);
-	} else {
-		printf("ERROR: Save file specified (%s) doesn't exist", filename);
-	}
-
-	if (versionnum!=CURRENTVERSION){
-		printf("CAUTION: version number of the save file loaded does not match current version number. Bots may not behave as they originally would.");
+	} else { //DOH! the file doesn't exist!
+		printf("ERROR: Save file specified (%s) doesn't exist!\n", filename);
 	}
 
 	world->setInputs();

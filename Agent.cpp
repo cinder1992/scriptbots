@@ -15,7 +15,7 @@ Agent::Agent()
 	//randomly spawned bots get the following attributes:
 	pos= Vector2f(randf(0,conf::WIDTH),randf(0,conf::HEIGHT));
 	angle= randf(-M_PI,M_PI);
-	health= 1.0+randf(0,0.1);
+	health= 0.5+randf(0,0.5);
 	age=0;
 	species=randi(-10,10);
 	spikeLength=0;
@@ -29,6 +29,7 @@ Agent::Agent()
 	clockf1= randf(5,100);
 	clockf2= randf(5,100);
 	boost=false;
+	jump= 0;
 	indicator=0;
 	gencount=0;
 	selectflag=0;
@@ -50,7 +51,7 @@ Agent::Agent()
 	bloodmod= randf(1, 3);
 	
 	MUTRATE1= 0.01; //randf(0.001, 0.005);
-	MUTRATE2= 0.05; //randf(0.01, 0.5);
+	MUTRATE2= 0.01; //randf(0.01, 0.5);
 
 	spiked= false;
 	
@@ -128,7 +129,7 @@ Agent Agent::reproduce(Agent that, float MR, float MR2)
 	if (a2.metabolism<0) a2.metabolism= 0; //not going to bother limiting to 0.1; if it can survive, I don't even care if it's 0.000...1
 	if (a2.metabolism>conf::MAXMETABOLISM) a2.metabolism= conf::MAXMETABOLISM;
 	if (randf(0,1)<MR) a2.herbivore= cap(randn(a2.herbivore, MR2));
-	if (randf(0,1)<MR*20) a2.species= (int) randn(a2.species, 200*MR2);
+	if (randf(0,1)<MR*20) a2.species= (int) randn(a2.species, 100*MR2);
 
 	if (randf(0,1)<MR) a2.MUTRATE1= randn(a2.MUTRATE1, conf::METAMUTRATE1);
 	if (randf(0,1)<MR) a2.MUTRATE2= randn(a2.MUTRATE2, conf::METAMUTRATE2);
@@ -151,6 +152,7 @@ Agent Agent::reproduce(Agent that, float MR, float MR2)
 	for(int i=0;i<NUMEYES;i++){
 		if(randf(0,1)<MR/2) a2.eyefov[i] = randn(a2.eyefov[i], MR2);
 		if(a2.eyefov[i]<0) a2.eyefov[i] = 0;
+		if(a2.eyefov[i]>M_PI) a2.eyefov[i] = M_PI; //eyes cannot wrap around bot
 		
 		if(randf(0,1)<MR) a2.eyedir[i] = randn(a2.eyedir[i], MR2);
 		if(a2.eyedir[i]<0) a2.eyedir[i] = 0;
@@ -163,33 +165,4 @@ Agent Agent::reproduce(Agent that, float MR, float MR2)
 	
 	return a2;
 
-}
-
-Agent Agent::crossover(const Agent& other)
-{
-	Agent anew;
-	anew.hybrid=true;
-	anew.gencount= this->gencount;
-	if (other.gencount<anew.gencount) anew.gencount= other.gencount;
-
-	//agent heredity attributes
-	anew.clockf1= randf(0,1)<0.5 ? this->clockf1 : other.clockf1;
-	anew.clockf2= randf(0,1)<0.5 ? this->clockf2 : other.clockf2;
-	anew.herbivore= randf(0,1)<0.5 ? this->herbivore : other.herbivore;
-	anew.MUTRATE1= randf(0,1)<0.5 ? this->MUTRATE1 : other.MUTRATE1;
-	anew.MUTRATE2= randf(0,1)<0.5 ? this->MUTRATE2 : other.MUTRATE2;
-	anew.temperature_preference = randf(0,1)<0.5 ? this->temperature_preference : other.temperature_preference;
-	
-	anew.smellmod= randf(0,1)<0.5 ? this->smellmod : other.smellmod;
-	anew.soundmod= randf(0,1)<0.5 ? this->soundmod : other.soundmod;
-	anew.hearmod= randf(0,1)<0.5 ? this->hearmod : other.hearmod;
-	anew.eyesensmod= randf(0,1)<0.5 ? this->eyesensmod : other.eyesensmod;
-	anew.bloodmod= randf(0,1)<0.5 ? this->bloodmod : other.bloodmod;
-	
-	anew.eyefov= randf(0,1)<0.5 ? this->eyefov : other.eyefov;
-	anew.eyedir= randf(0,1)<0.5 ? this->eyedir : other.eyedir;
-	
-	anew.brain= this->brain.crossover(other.brain);
-	
-	return anew;
 }
