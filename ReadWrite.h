@@ -15,16 +15,16 @@ class ReadWrite
 public:
 	ReadWrite();
 
-	void getOurFile() const;
-	void setOurFile() const;
+	void loadSettings(const char * filename); //load text settings file
 
-	void saveWorld(World *world, float xpos, float ypos, const char *filename); //save world
-	void loadWorld(World *world, float &xtranslate, float &ytranslate, const char *filename); //load world
+	void saveAgent(Agent * agent, const char * filename); //save a single agent
+	void loadAgent(const char * filename);
 
-private:
-	const char *ourfile;
-	void saveAgent(World &w, const Agent &agent); //save a single agent
-//	Agent transagent; //???
+	void saveWorld(World * world, float xpos, float ypos, const char * filename); //save world to text
+	void loadWorld(World * world, float &xtranslate, float &ytranslate, const char * filename); //load world from text
+	
+	const char * ourfile;
+	const char * lastfile;
 };
 
 #endif // READWRITE_H

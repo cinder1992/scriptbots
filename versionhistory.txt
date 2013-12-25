@@ -1,5 +1,87 @@
+12/25/13 changes
++ Added menu window via GLUI; gui integration achieved. Many options and live variables migrated there.
+  Current list of all live variables:
+  * Fast Mode (disable draw) and speed
+  * Pausing and close/open world toggling
+  * Layer drawing mode selection
+  * Agent drawing mode selection
+  * Following mode selection
+  * Debug toggle
+  All live variables are still togglable via key commands and right-click context menu (some)
+  Loading, saving, and starting new worlds are available as well, along with input and alert windows
++ Terrian generator implemented. Creates land masses and oceans. Mapped and displayed via cell layers. (oceans: 0,
+  land: 1. May add other value possibilities for heightmaps). Settings.h vars control number of continents and 
+  percent of world which is water.
++ Lungs: inheritable, mutable bot constant, determines what environment (land, water, or both) the bot can
+  survive in. New indicator next to bot visualizes this variable.
++ New brain mutation: Input Swap: two inputs for one brain box are switched. Moderate chance.
++ Now tracking number of children from each bot
++ New Follow type: Most Productive: the bot which has had the most number of children over its lifetime will be followed
+  * Known bug: this is not working fully yet and only follows oldest agents. Will fix in next update
+
+= Plant spread now directly related to fruit presence, which now requires 1/4 plant instead of 1/10
+= Adjustments to agent's initial species and radius values (wider ranges for both)
+= Giving birth no longer takes health for sexual reproduction, and 0.4 for assexual
+= Give function of bots now activates only if target bot has less health than self
+= Collisions are now softer and take the relative bot's radii into account (smaller bots get pushed more)
+= Changes to brain (fewer weights will be -1 or 1 at init, dampening more likely to be seen, a lot less injury
+  by activity, and increased percent of inputs set to actual sence inputs to 40%)
+= Max generation following will no longer select zero generation agents, meaning if there are only zero gen
+  agents, the focus will not change
+= Meat decays again
+= Fixes to order of operations in loading world, specifically the extra initial tick and success message
+= Tweeks to mutation rates, boost, hazard layer mechanics
+= Poison/hazard hurts bots more (several runs were observed with localized specitation after this change!!!)
+= Food balancing
+= Moved graph and infos to better fit 1366x768 res screens
+
+7/22/13 changes
++ Hearing and Sound sensors split, now each bot has NUMEARS of these sensor pairs (called ears), 
+  and each has a variable angle location on each bot. Ears drawn on bots as small tan circles
++ Health lost for having lots of actively changing boxes in the brain
++ Health lost if physics corrects for less than a TOOCLOSE (settings const) distance
++ New brain synapse type: memory; causes box to skip changing if conn value > 0.5, effectively 
+  nulifying any changes to the box's value
++ Added constants for modifying simulation interface (zoom and snap speeds)
++ Added liveMutate function to brain; allows changes to brains after bot conception
++ Added variable bot radius: is inheritable, ranges between 2.5 and 17.5 for random agents (mean= 10, configurable)
++ Agents are no longer able to countdown repcounter while health is below mothering health theshold (default 0.65, configurable)
++ Count of agents with spikes now reported (no graph as yet)
++ Agents now gain repcounter bonus if at full health
++ Agents have sepparate "eyesensecellmod" and "eyesensebotsmod" vars for eyes
++ Aesthetics:
+  Added Agent visual toggle; can hide agents, or color them according to stomach type, temperature discomfort, or sound volume
+  Agents get white event when they are selected.
+  Changes regarding spike, eye, and ear rendering related to bot radius, to allow for better looking custom radii bots.
+  other color scheme changes
+
+- Removed species count reporting (code still present)
+- Version number checking for loading/saving discontinued
+- Collisions no longer flag agents as spiked. Was creating too many sitting colonies.
+
+= Temperature layer changed into fruit layer. Fruit will be a new source of food which populates randomly like old food, but is only 
+  available on cells with plant present. Code for consumption by bots not yet implemented.
+= Bot's clock inputs fixed; was suddenly snapping to zero at modcounter reset, so current epoch is now
+  taken into account as well.
+= Reduced health loss from reproduction
+= Edited jump code to force bots to have a grace period between jumps. Fixed jumping jump landing bug
+= Extended spike length now based on settings var
+= Meat no longer decays
+= Carnivores now get same bonus as herbivores for moving slowly over their food
+= Omnivores now should have a harder time eating
+= Agent speed factor for food consumption switched from average to max of the speeds of the two wheels
+= Metabolism instead only effects rate of repcounter countdown and healthloss. REPRATE setting adjusted appropriately.
+= Daughter bots should now spawn behind their mothers more.
+= Plant food can only spread from 3/4 or more full cells (was 1/2)
+= Agents which run at full speed will not get any food from any source.
+= Code opimization
+= Balancing:
+  Food rates. Trying to get balance between not enough bots and explosive colonies.
+  Mutation chances and magnitudes of brain boxes and agent traits tweaked
+
+
 11/7/12 changes
-+ Added Hazard layer: injures bots, instant hazard events, and slow bot deposit of hazard waste.
++ Added Hazard layer: instant hazards which last a random number of ticks before disapearing, slowly increases under live bots and damages them.
 + Added Jump: output that sets a counter for "height" that slowly decreases over time. Jumping bots cannot be attacked, cannot change direction
   or angle, and cannot interact with cells (plants, meat, or hazards). Automatically locks in boost if active when jump is activated.
   Jumping bots do not interact physically with other bots, but can still attack others
@@ -16,13 +98,14 @@
   Old saves are incompatable
 = Adjusted init health of spawned bots to increase turnover rate and give more of a challenge to species
 = Reduced "jumpiness" of "follow healthiest agent" function
-= Changed box weight adjusting code (again). Hopefully this time the bots will exhibit some learning behavior
+= Changed weight adjusting code (again). Hopefully this time the bots will exhibit some learning behavior
 = Fixed incorrect save data bug, -1 selected agent id bug, and other tune ups to ReadWrite module
 = Fixed species reporting. A species is counted in reporting only when there are 3 or more members
 = Fixed food overpopulation of edges bug
 = Continued plant, meat, and hazard balancing
 * Notable bug: bots turn instantly when jump= 0, making the action look ugly. Needs work
 * FPS has been reduced to less than 200 at program init, settings as is, on an intel i3, 2.1GHz Windows machine. This is annoying
+
 
 6/26/12 changes
 + Added player control of agents: use "w,a,s,d" keys to control the selected agent. Is toggleable ("w,a,s,d" keys can activate, 

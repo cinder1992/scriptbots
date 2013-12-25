@@ -20,6 +20,8 @@ public:
     void initEvent(float size, float r, float g, float b);
     
     void tick();
+	float brainActivity;
+	void setActivity();
     Agent reproduce(Agent that, float MR, float MR2);
     
     Vector2f pos;
@@ -38,7 +40,6 @@ public:
 
     float spikeLength;
     int age;
-	int species; //if two bots are of significantly different species, then they can't crossover
 
     bool spiked;    
     
@@ -62,27 +63,40 @@ public:
 
     int id; 
 
-    //inhereted stuff
-    float herbivore; //is this agent a herbivore? between 0 and 1
+    //inhereted static stuff
+	int species; //if two bots are of significantly different species, then they can't crossover
+	float radius; //radius of bot
+	float stomach[3]; //stomach: #0 is herbivore, #1 is carnivore, #2 is frugivore
+
     float MUTRATE1; //how often do mutations occur?
     float MUTRATE2; //how significant are they?
     float temperature_preference; //what temperature does this agent like? [0 to 1]
+	float lungs; //what type of environment does this agent need? [0 for water, 1 for land]
     
-	float eyesensmod;
-	float smellmod;
-	float soundmod;
-	float hearmod;
-	float bloodmod;
+	//numbers of sensors. UNUSED
+	int numears;
+	int numeyes;
+
+	float smell_mod;
+	float sound_mod;
+	float hear_mod;
+	float eye_see_agent_mod;
+	float eye_see_cell_mod;
+	float blood_mod;
     
+	std::vector<float> eardir; //position of ears
+
     std::vector<float> eyefov; //field of view for each eye
     std::vector<float> eyedir; //direction of each eye
     
 	//THE BRAIN!!!!
     MLPBrain brain;
+	int numinputs; //number of inputs and brain boxes. UNUSED
+	int numboxes;
     
-    //will store the mutations that this agent has from its parent
-    //can be used to tune the mutation rate
+    //stats: mutations, children, etc
     std::vector<std::string> mutations;
+	int children; //how many kids did you say you had again?
 };
 
 #endif // AGENT_H

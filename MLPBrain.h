@@ -14,7 +14,7 @@ public:
 
     std::vector<float> w; //weight of each connecting box
     std::vector<int> id; //id in boxes[] of the connecting box
-    std::vector<int> type; //0: regular synapse. 1: change-sensitive synapse
+    std::vector<int> type; //0: regular synapse. 1: change-sensitive synapse. 2: memory trigger synapse
     float kp; //damper
     float gw; //global w
     float bias;
@@ -39,7 +39,9 @@ public:
     virtual MLPBrain& operator=(const MLPBrain& other);
 
     void tick(std::vector<float>& in, std::vector<float>& out);
-    void mutate(float MR, float MR2);
+	float getActivity();
+    void initMutate(float MR, float MR2);
+	void liveMutate(float MR, float MR2, std::vector<float>& out);
     MLPBrain crossover( const MLPBrain &other );
 private:
     void init();

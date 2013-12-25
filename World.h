@@ -24,20 +24,17 @@ public:
 	void setDebug(bool state);
 	std::vector<Vector2f> linesA;
 	std::vector<Vector2f> linesB;
-    
-    /**
-     * Returns the number of herbivores and 
-     * carnivores in the world.
-     * first : num herbs
-     * second : num carns
-     */
-    std::pair<int,int> numHerbCarnivores() const;
-    
-    int numAgents() const;
-	int numFood() const;
-	int numMeat() const;
-	int numHazards() const;
-	int numHybrids() const;
+
+    int getHerbivores() const;
+	int getCarnivores() const;
+	int getFrugivores() const;
+    int getAgents() const;
+	int getHybrids() const;
+	int getSpiked() const;
+	int getFood() const;
+	int getMeat() const;
+	int getHazards() const;
+
     int epoch() const;
     
     //mouse interaction
@@ -49,10 +46,11 @@ public:
     
     void positionOfInterest(int type, float &xi, float &yi);
     
-    std::vector<int> numCarnivore;
-    std::vector<int> numHerbivore; 
-	std::vector<int> numHybrid;
-	std::vector<int> numTotal;
+    int numHerbivore[conf::RECORD_SIZE];
+	int numCarnivore[conf::RECORD_SIZE];
+	int numFrugivore[conf::RECORD_SIZE]; 
+	int numHybrid[conf::RECORD_SIZE];
+	int numTotal[conf::RECORD_SIZE];
     int ptr;
 
 	int deleting;
@@ -67,9 +65,10 @@ public:
     int idcounter;
 
 	std::vector<Agent> agents;
+
 	//cells; replaces food layer, can be expanded (4 layers currently)
-	//[LAYER]: 0= plant food, 1= meat, 2= hazard (poison, waste, events) , 3= temperature
-	//(water/land, light layers also possible with very little coding)
+	//[LAYER]: #0= plant food, #1= meat, #2= hazard (poison, waste, events), #3= fruit, #4= land/water
+	//(light, chemical layers also possible with very little coding)
 	int CW;
 	int CH;
 	int cx;
@@ -80,12 +79,13 @@ public:
 	void brainsTick();  //takes in[] to out[] for every agent
     void processOutputs();
     
-private:    
+private:
     void writeReport();
     
     void reproduce(int ai, int bi, float aMR, float aMR2, float bMR, float bMR2);
 
 	void cellsRandomFill(int layer, float amount, int number);
+	void cellsLandMasses(int layer);
 	float capCell(float a, float top) const;
 
     bool CLOSED; //if environment is closed, then no random bots or food are added per time interval

@@ -2,6 +2,8 @@
 #define HELPERS_H
 #include <stdlib.h>
 #include <math.h>
+#include "vmath.h"
+
 //uniform random in [a,b)
 inline float randf(float a, float b){return ((b-a)*((float)rand()/RAND_MAX))+a;}
 
@@ -35,5 +37,12 @@ inline float cap(float a){
 	if (a<0) return 0;
 	if (a>1) return 1;
 	return a;
+}
+
+//distance between point and a line connecting two other points
+inline float pointline(Vector2f posA, Vector2f posB, Vector2f posC){
+	//points A & B are of line; point C is other
+	float normalLength=(posA-posB).length();
+	return fabs((posC.x-posA.x)*(posB.y-posA.y) - (posC.y-posA.y)*(posB.x-posA.x))/normalLength;
 }
 #endif
