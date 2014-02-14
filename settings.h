@@ -2,7 +2,7 @@
 #define OUTPUTSIZE 12
 #define NUMEYES 4
 #define NUMEARS 2
-#define BRAINSIZE 100
+#define BRAINSIZE 200
 #define CONNS 5
 #define LAYERS 5
 
@@ -67,7 +67,7 @@ namespace conf {
 
 	//LAYERS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ LAYERS
 	const float FOODINTAKE= 0.008; //how much plant food can feed an agent per tick?
-	const float FOODGROWTH= -0.000001; //-0.000005 (too empty) //how much does food grow/decay on a cell which already has food?
+	const float FOODGROWTH= -0.000002; //-0.000005 (too empty) //how much does food grow/decay on a cell which already has food?
 	const float FOODWASTE= 0.0003; //0.0002 (too much) 0.0005 (no survivors) //how much food disapears if agent eats?
 	const float FOODMAX= 0.5; //how much food per cell can there be at max?
 	const int FOODADDFREQ= 120; //how often does random square get set to full food?
